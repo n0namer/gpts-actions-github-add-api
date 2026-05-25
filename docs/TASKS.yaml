@@ -1,0 +1,324 @@
+project:
+  id: github-add
+  name: GitHub ADD
+  north_star: >
+    Give GPTS safe additional GitHub patch commands for partial text-file edits:
+    preview diff, apply patch, commit, reread evidence.
+  source_of_truth:
+    - README.md
+    - docs/HANDOFF_FOR_NEXT_LLM.md
+    - docs/ARCHITECTURE.md
+    - docs/API_CONTRACT.md
+    - docs/IMPLEMENTATION_PLAN.md
+    - docs/RAILWAY_DEPLOYMENT.md
+  current_phase: MVP planning ready for implementation
+
+constraints:
+  mvp_auth: existing GitHub token
+  no_github_app_in_mvp: true
+  no_n8n_control_merge: true
+  no_universal_github_operator: true
+  patch_core: kpdecker/jsdiff / npm package diff
+  github_client: '@octokit/rest or equivalent GitHub REST client'
+  runtime: standalone Railway service
+  service_name: github-add-api
+  railway_project: github-add
+
+statuses:
+  allowed:
+    - PLANNED
+    - IN_PROGRESS
+    - DONE
+    - PARTIAL
+    - BLOCKED
+    - HYPOTHESIS
+    - EVIDENCE_MISSING
+
+stages:
+  - id: stage_0_bootstrap
+    name: Bootstrap service
+    dod:
+      - Node/TypeScript service exists
+      - health endpoint works locally
+      - tests can run
+      - no secrets printed
+  - id: stage_1_patch_engine
+    name: Pure patch engine
+    dod:
+      - replace_between_markers implemented with tests
+      - insert_after_marker implemented with tests
+      - diff preview generated
+      - invalid marker cases tested
+  - id: stage_2_github_io
+    name: GitHub read/update
+    dod:
+      - reads file and sha from GitHub
+      - updates test file through GitHub API
+      - returns commit sha
+      - rereads final content
+  - id: stage_3_safety
+    name: Safety gates
+    dod:
+      - allowed repo/branch/path enforced
+      - expected_sha mismatch returns 409
+      - missing/duplicate marker returns 422
+      - protected paths blocked
+      - diff limit enforced
+      - basic secret scan present
+  - id: stage_4_api
+    name: Public patch API
+    dod:
+      - /patch/preview returns DRY_RUN_PASS
+      - /patch/apply returns APPLY_PASS
+      - /openapi.json exposes only required actions
+  - id: stage_5_railway
+    name: Railway deployment
+    dod:
+      - Railway public health PASS
+      - preview smoke PASS
+      - apply smoke PASS
+      - commit_sha recorded
+      - reread_verified true
+
+tasks:
+  - task_id: GHA-001
+    stage: stage_0_bootstrap
+    action: Create minimal service skeleton
+    edit_steps:
+      - Add package.json
+      - Add tsconfig.json
+      - Add src/server.ts
+      - Add GET /health
+      - Add test script
+    dod:
+      - npm test passes
+      - local /health returns 200
+    evidence_required:
+      - test output
+      - health response
+    validator: npm test && curl /health
+    owner_tool: dev-team or Railway-capable LLM
+    dependencies: []
+    status: PLANNED
+    write_back_target: README.md or implementation report
+
+  - task_id: GHA-002
+    stage: stage_1_patch_engine
+    action: Implement marker patch functions
+    edit_steps:
+      - Add replaceBetweenMarkers function
+      - Add insertAfterMarker function
+      - Add structured patch errors
+      - Add unit tests for success and failure cases
+    dod:
+      - success tests pass
+      - missing marker test passes
+      - duplicate marker test passes
+      - start-after-end test passes
+    evidence_required:
+      - unit test output
+    validator: npm test
+    owner_tool: dev-team
+    dependencies:
+      - GHA-001
+    status: PLANNED
+    write_back_target: docs/IMPLEMENTATION_PLAN.md or implementation report
+
+  - task_id: GHA-003
+    stage: stage_1_patch_engine
+    action: Add diff preview generation
+    edit_steps:
+      - Add jsdiff / diff package
+      - Add createDiff helper
+      - Return changed line counts
+    dod:
+      - diff_preview present on preview fixture
+      - changed_lines present
+    evidence_required:
+      - test output
+      - sample diff
+    validator: npm test
+    owner_tool: dev-team
+    dependencies:
+      - GHA-002
+    status: PLANNED
+    write_back_target: docs/API_CONTRACT.md if contract changes
+
+  - task_id: GHA-004
+    stage: stage_2_github_io
+    action: Implement GitHub read/update client
+    edit_steps:
+      - Add getGitHubClient(context)
+      - Add readFile helper
+      - Add updateFile helper
+      - Keep token only in env
+    dod:
+      - can read test fixture from GitHub
+      - can update test fixture through GitHub API
+      - commit_sha returned
+    evidence_required:
+      - sha before
+      - commit sha
+      - reread content proof
+    validator: integration smoke against test fixture
+    owner_tool: dev-team
+    dependencies:
+      - GHA-001
+    status: PLANNED
+    write_back_target: deployment or smoke report
+
+  - task_id: GHA-005
+    stage: stage_3_safety
+    action: Implement safety gates
+    edit_steps:
+      - Add repo allowlist check
+      - Add branch allowlist check
+      - Add path prefix allowlist check
+      - Add protected path blocklist
+      - Add expected_sha check
+      - Add max diff and max file size checks
+      - Add basic secret scan
+      - Add in-memory file lock
+    dod:
+      - disallowed repo blocked
+      - disallowed branch blocked
+      - protected path blocked
+      - old sha returns 409
+      - too-large diff returns 422
+      - duplicate marker returns 422
+    evidence_required:
+      - negative test output
+    validator: npm test + smoke negatives
+    owner_tool: dev-team
+    dependencies:
+      - GHA-002
+      - GHA-004
+    status: PLANNED
+    write_back_target: docs/IMPLEMENTATION_PLAN.md or test report
+
+  - task_id: GHA-006
+    stage: stage_4_api
+    action: Implement /patch/preview
+    edit_steps:
+      - Add request schema
+      - Read GitHub file
+      - Check expected_sha
+      - Apply operation in memory
+      - Generate diff
+      - Return DRY_RUN_PASS
+    dod:
+      - preview does not commit
+      - diff_preview present
+      - evidence object present
+    evidence_required:
+      - HTTP response
+      - no commit proof or before/after sha unchanged
+    validator: preview smoke
+    owner_tool: dev-team
+    dependencies:
+      - GHA-003
+      - GHA-005
+    status: PLANNED
+    write_back_target: smoke report
+
+  - task_id: GHA-007
+    stage: stage_4_api
+    action: Implement /patch/apply
+    edit_steps:
+      - Add request schema
+      - Acquire file lock
+      - Reread GitHub file
+      - Check expected_sha
+      - Apply patch
+      - Run safety gates
+      - Commit through GitHub API
+      - Reread and verify
+      - Release lock
+    dod:
+      - apply returns APPLY_PASS
+      - commit_sha present
+      - reread_verified true
+      - old sha returns 409 after first apply
+    evidence_required:
+      - apply HTTP response
+      - commit sha
+      - reread proof
+    validator: apply smoke
+    owner_tool: dev-team
+    dependencies:
+      - GHA-006
+    status: PLANNED
+    write_back_target: smoke report
+
+  - task_id: GHA-008
+    stage: stage_4_api
+    action: Add minimal OpenAPI schema
+    edit_steps:
+      - Add GET /openapi.json
+      - Include only health, preview, apply
+      - Avoid debug/internal endpoints
+    dod:
+      - OpenAPI JSON valid
+      - GPTS can import schema
+    evidence_required:
+      - schema URL
+      - operation list
+    validator: GPTS import or OpenAPI parser
+    owner_tool: dev-team
+    dependencies:
+      - GHA-006
+      - GHA-007
+    status: PLANNED
+    write_back_target: docs/API_CONTRACT.md if schema changes
+
+  - task_id: GHA-009
+    stage: stage_5_railway
+    action: Deploy to Railway
+    edit_steps:
+      - Create Railway project github-add
+      - Connect GitHub repo n0namer/GitHub-add
+      - Set env variables
+      - Deploy github-add-api
+      - Check public /health
+    dod:
+      - health PASS on public Railway URL
+      - no secrets in logs
+    evidence_required:
+      - Railway URL
+      - health response
+      - deployment status
+    validator: curl /health
+    owner_tool: Railway-capable LLM or operator
+    dependencies:
+      - GHA-008
+    status: PLANNED
+    write_back_target: docs/RAILWAY_DEPLOYMENT.md or deployment report
+
+  - task_id: GHA-010
+    stage: stage_5_railway
+    action: Run E2E preview/apply smoke
+    edit_steps:
+      - Read test fixture sha
+      - Call /patch/preview
+      - Inspect diff
+      - Call /patch/apply
+      - Reread fixture
+      - Record commit sha
+    dod:
+      - preview PASS
+      - apply PASS
+      - commit_sha present
+      - reread_verified true
+      - negative tests pass
+    evidence_required:
+      - HTTP preview response
+      - HTTP apply response
+      - commit sha
+      - reread proof
+      - negative test responses
+    validator: E2E smoke
+    owner_tool: GPTS + GitHub ADD Actions
+    dependencies:
+      - GHA-009
+    status: PLANNED
+    write_back_target: smoke report
