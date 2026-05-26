@@ -7,7 +7,7 @@ Do not use production files for the first apply test.
 ## Replace block
 
 <!-- GPT:START smoke-block -->
-openclaw practical e2e 2026-05-26T16:52:00Z
+old smoke content
 <!-- GPT:END smoke-block -->
 
 ## Insert marker
