@@ -7,7 +7,7 @@ Do not use production files for the first apply test.
 ## Replace block
 
 <!-- GPT:START smoke-block -->
-old smoke content
+gpts ui exact once smoke
 <!-- GPT:END smoke-block -->
 
 ## Insert marker
