@@ -68,7 +68,7 @@ npm run check
 
 - Smoke apply commit: `7f0c84f43d2f0175cbe19770a732e5f4d90445ec`
 - Fixture restore commit: `74a353d722ca47aa5e3a7be8b156f36c048916f1`
-- Report update commit: `82e9f15813c3608bdfd54b3119cafdd20f27ca67`
+- Report update commits: `82e9f15813c3608bdfd54b3119cafdd20f27ca67`, `042c4e7ad86bb2cf7c1e991f6852bbc8613e0daf`
 - Final fixture file SHA: `7035707c364e2b0bf5470dd3bf896952e4e2e38c`
 
 ### Marker preservation proof
