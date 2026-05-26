@@ -17,11 +17,20 @@ export function openApiDocument() {
     options: { type: "object", properties: { max_changed_lines: { type: "integer" } } },
   };
 
+  const jsonResponse = (schemaRef, description) => ({
+    description,
+    content: {
+      "application/json": {
+        schema: { $ref: schemaRef },
+      },
+    },
+  });
+
   return {
     openapi: "3.1.0",
     info: {
       title: "GitHub ADD API",
-      version: "0.2.0",
+      version: "0.2.1",
       description: "Safe marker-based and text-based patch preview/apply service for GPTS.",
     },
     servers: [
@@ -35,7 +44,9 @@ export function openApiDocument() {
         get: {
           operationId: "githubAddHealth",
           summary: "Health check",
-          responses: { "200": { description: "Service is healthy" } },
+          responses: {
+            "200": jsonResponse("#/components/schemas/HealthResponse", "Service is healthy"),
+          },
         },
       },
       "/file/read": {
@@ -91,6 +102,15 @@ export function openApiDocument() {
         },
       },
       schemas: {
+        HealthResponse: {
+          type: "object",
+          required: ["status", "service"],
+          properties: {
+            status: { type: "string", examples: ["ok"] },
+            service: { type: "string", examples: ["github-add"] },
+            version: { type: "string", examples: ["0.1.0"] },
+          },
+        },
         PatchRequest: {
           type: "object",
           required: ["repository_full_name", "branch", "path", "expected_sha", "operation"],
