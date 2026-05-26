@@ -4,7 +4,7 @@ REQUEST_ID: `GITHUB_ADD_MVP_001`
 
 ## Status
 
-`PARTIAL` until Railway deployment and live smoke tests are completed.
+`DONE` — full live smoke cycle completed against Railway production.
 
 ## Implemented in repository
 
@@ -34,82 +34,50 @@ REQUEST_ID: `GITHUB_ADD_MVP_001`
 
 ## Local verification
 
-Run:
-
 ```bash
 npm install
 npm test
 npm run check
 ```
 
-## Railway verification checklist
+## Railway verification — live smoke 2026-05-26
 
-Do not mark `DONE` until all checks pass:
+### Setup
 
-- `/health` returns HTTP 200.
-- `/openapi.json` returns valid OpenAPI JSON.
-- `/patch/preview` passes on `test-fixtures/marker-file.md`.
-- `/patch/apply` commits to `test-fixtures/marker-file.md`.
-- Apply response includes `commit_sha`.
-- Reread verifies changed content.
-- Old SHA returns HTTP 409.
-- Missing marker returns HTTP 422.
-- Duplicate marker returns HTTP 422.
-- Protected path is blocked.
-- Logs do not print secrets.
-
-
-## Execution evidence — 2026-05-26
-
-### GitHub
-
-- Repository: `n0namer/GitHub-add`.
-- Main commit after implementation: `80c3282dcdb32f0786efbef7330524c04b6f5ebd`.
-- Read-back tree includes:
-  - `package.json`;
-  - `railway.json`;
-  - `src/config.mjs`;
-  - `src/errors.mjs`;
-  - `src/github.mjs`;
-  - `src/openapi.mjs`;
-  - `src/patch.mjs`;
-  - `src/safety.mjs`;
-  - `src/server.mjs`;
-  - `tests/server.test.mjs`.
-
-### Local tests
-
-Observed local commands:
-
-```bash
-node --check src/server.mjs
-node --test
-```
-
-Result: `PASS`, 7 tests passed.
-
-### Railway
-
-- Project: `github-add`.
-- Project ID: `6eebe485-ad39-41e6-9356-061bf7aee00a`.
-- Environment: `production`.
-- Environment ID: `0739740f-5c09-4d8c-a249-5252578e011d`.
-- Service: `github-add-api`.
-- Service ID: `9d3363cc-b284-41a5-b6a9-c7e4401b8eb0`.
-- Deployment ID: `5bec6052-e5f8-4aa4-91c7-8ed82824b9f8`.
-- Deployment status: `SUCCESS`.
+- **GITHUB_TOKEN** set via Railway GraphQL `variableUpsert` on service `9d3363cc` in environment `0739740f`.
+- **Redeploy** triggered via `deploymentRedeploy(id: "5bec6052-e5f8-4aa4-91c7-8ed82824b9f8")`.
+- Deployment status: **SUCCESS**.
 - Service domain: `github-add-api-production.up.railway.app`.
-- Target port: `8080`.
 
-### Remaining blocker
+### Smoke cycle
 
-`GITHUB_TOKEN` is not set in Railway service variables yet. Do not run `/patch/preview` or `/patch/apply` live smoke until this secret is configured.
+| # | Test | Evidence | Result |
+|---|------|----------|--------|
+| 1 | Health `GET /health` | HTTP 200, `{"status":"ok","service":"github-add"}` | ✅ |
+| 2 | OpenAPI schema `GET /openapi.json` | openapi: 3.1.0, 3 paths | ✅ |
+| 3 | Read fixture SHA | main: `4a8edc0b...`, file SHA: `7035707c...` | ✅ |
+| 4 | Preview — full markers preserving comment lines | `DRY_RUN_PASS`, markers_found: {start:1, end:1} | ✅ |
+| 5 | Apply with preview_patch_id, commit_message | `APPLY_PASS`, commit_sha: `7f0c84f43d2f0175cbe19770a732e5f4d90445ec`, reread_verified: true | ✅ |
+| 6 | Reread — verify exact marker lines preserved | Both comment marker lines intact, `new smoke content - full-marker smoke 2026-05-26T01:36:37Z` present | ✅ |
+| 7 | Restore fixture to original content | file SHA restored to `7035707c`, `old smoke content` verified | ✅ |
+| 8 | Negative: wrong SHA → 409 | `FILE_CHANGED` with actual_sha returned | ✅ |
+| 9 | Negative: missing marker | `PATCH_NOT_APPLICABLE` | ✅ |
+| 10 | Negative: duplicate marker | `PATCH_NOT_APPLICABLE` | ✅ |
+| 11 | Negative: protected path (`.github/workflows/`) | `NOT_ALLOWED` | ✅ |
 
-After `GITHUB_TOKEN` is set, run the smoke checklist above and update this report with:
+### Commit evidence
 
-- `/health` HTTP status;
-- `/openapi.json` validation result;
-- preview `patch_id`;
-- apply `commit_sha`;
-- reread proof;
-- negative cases: 409 SHA mismatch, 422 missing marker, 422 duplicate marker, protected path blocked.
+- Smoke apply commit: `7f0c84f43d2f0175cbe19770a732e5f4d90445ec`
+- Restore commit: `74a353d722ca`
+- Final main SHA: `74a353d722ca`
+- Final fixture file SHA: `7035707c364e2b0bf5470dd3bf896952e4e2e38c`
+
+### Marker preservation proof
+
+Preview diff showed exact `<!-- GPT:START smoke-block -->` and `<!-- GPT:END smoke-block -->` lines preserved (3-line space: marker → content → marker). Reread confirmed both comment markers untouched.
+
+### Secret safety
+
+- No secrets printed, echoed, logged, or exposed in any output.
+- `GITHUB_TOKEN` value masked in all operations.
+- `RAILWAY_API_TOKEN` used only via GraphQL, never disclosed.
