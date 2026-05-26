@@ -208,8 +208,17 @@ async function handleApply(rawPayload, config, deps) {
   try {
     const outcome = await buildOutcome(payload, config, deps);
     const update = await deps.updateFile(payload, outcome.newContent, outcome.file.sha, commitMessage, config);
-    const reread = await deps.readFile({ ...payload, expected_sha: update.file_sha_after || payload.expected_sha }, config);
-    if (reread.content !== outcome.newContent) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+
+    const rereadPayload = { ...payload, expected_sha: update.file_sha_after || payload.expected_sha };
+    let reread = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      reread = await deps.readFile(rereadPayload, config);
+      if (reread.content === outcome.newContent) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    if (!reread || reread.content !== outcome.newContent) {
+      throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    }
     if (previewPatchId) previews.delete(previewPatchId);
 
     const applyResult = {

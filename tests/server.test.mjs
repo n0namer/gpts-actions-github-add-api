@@ -336,7 +336,41 @@ test("preview and apply with replace_exact_once", async () => {
   } finally { server.close(); }
 });
 
-/* ──── OpenAPI flat schema shape ──── */
+test("apply handles stale readFile with retry and succeeds", async () => {
+  const originalContent = "<OLD>stale</OLD>";
+  // replaceBetweenMarkers wraps new_text with innerText() -> \nNEW\n
+  const patchedContent = "<OLD>\nNEW\n</OLD>";
+  let callCount = 0;
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "test-token", actionRequireBearer: false, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async (payload) => {
+      callCount++;
+      if (callCount === 1) {
+        // buildOutcome initial read: must match expected_sha and have the original content
+        return { content: originalContent, sha: payload.expected_sha, size: originalContent.length };
+      }
+      // callCount >= 2: retry loop after updateFile
+      if (callCount <= 3) {
+        // stale GitHub cache after commit
+        return { content: originalContent, sha: "stale-sha", size: originalContent.length };
+      }
+      // fresh content after retry
+      return { content: patchedContent, sha: "fresh-sha", size: patchedContent.length };
+    },
+    updateFile: async () => ({ commit_sha: "commit-stale-retry", file_sha_after: "fresh-sha" }),
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const apply = await fetch(`${base}/patch/apply`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/marker-file.md", expected_sha: "E1", operation: { type: "replace_between_markers", start_marker: "<OLD>", end_marker: "</OLD>", new_text: "NEW" }, commit_message: "test: stale retry" }) });
+    assert.equal(apply.status, 200);
+    const body = await apply.json();
+    assert.equal(body.status, "APPLY_PASS");
+    assert.equal(body.reread_verified, true);
+    assert.ok(callCount >= 3, "readFile should have been called at least 3 times");
+  } finally { server.close(); }
+});
 
 test("OpenAPI has flat PatchApplyRequest no allOf and new operations", async () => {
   const { server, base } = await createAuthTestServer();
