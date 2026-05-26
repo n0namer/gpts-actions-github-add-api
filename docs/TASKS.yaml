@@ -153,11 +153,11 @@ tasks:
     dod:
       - docs/TASKS.yaml no longer says MVP planning
       - done tasks cite deployment report evidence
-    evidence_required: [this commit, docs/DEPLOYMENT_REPORT.md]
+    evidence_required: [commit 8ed2ef497ee9793c1d30e929a177aa7b488631a3, docs/DEPLOYMENT_REPORT.md]
     validator: reread docs/TASKS.yaml
     owner_tool: GitHub connector
     dependencies: [GHA-010]
-    status: IN_PROGRESS
+    status: DONE
     write_back_target: docs/TASKS.yaml
   - task_id: GHA-ACT-001
     stage: stage_6_gpts_delivery
@@ -171,11 +171,11 @@ tasks:
       - setup doc exists
       - schema URL and operations documented
       - no secrets documented
-    evidence_required: [docs/GPTS_ACTION_SETUP.md]
+    evidence_required: [commit e8b4046ad8d8d1dd6a367d659891f6aa2ef1f639, docs/GPTS_ACTION_SETUP.md]
     validator: doc review plus schema URL smoke
     owner_tool: GitHub connector
     dependencies: [GHA-PIPE-001]
-    status: PLANNED
+    status: DONE
     write_back_target: docs/GPTS_ACTION_SETUP.md
   - task_id: GHA-ACT-002
     stage: stage_6_gpts_delivery
@@ -247,11 +247,11 @@ tasks:
       - runbook exists
       - errors map to corrective steps
       - no secrets included
-    evidence_required: [docs/RUNBOOK.md]
+    evidence_required: [commit 624efe2a7aaeb9d09724c27d26f9c49df8f0d0ce, docs/RUNBOOK.md]
     validator: doc review
     owner_tool: GitHub connector
     dependencies: [GHA-PIPE-001]
-    status: PLANNED
+    status: DONE
     write_back_target: docs/RUNBOOK.md
 
 replan_hooks:
