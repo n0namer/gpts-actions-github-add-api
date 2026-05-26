@@ -6,6 +6,12 @@ export function openApiDocument() {
       version: "0.1.0",
       description: "Safe marker-based patch preview/apply service for GPTS.",
     },
+    servers: [
+      {
+        url: "https://github-add-api-production.up.railway.app",
+        description: "Railway production",
+      },
+    ],
     paths: {
       "/health": {
         get: {
