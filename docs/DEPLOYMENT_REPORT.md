@@ -57,3 +57,59 @@ Do not mark `DONE` until all checks pass:
 - Duplicate marker returns HTTP 422.
 - Protected path is blocked.
 - Logs do not print secrets.
+
+
+## Execution evidence — 2026-05-26
+
+### GitHub
+
+- Repository: `n0namer/GitHub-add`.
+- Main commit after implementation: `80c3282dcdb32f0786efbef7330524c04b6f5ebd`.
+- Read-back tree includes:
+  - `package.json`;
+  - `railway.json`;
+  - `src/config.mjs`;
+  - `src/errors.mjs`;
+  - `src/github.mjs`;
+  - `src/openapi.mjs`;
+  - `src/patch.mjs`;
+  - `src/safety.mjs`;
+  - `src/server.mjs`;
+  - `tests/server.test.mjs`.
+
+### Local tests
+
+Observed local commands:
+
+```bash
+node --check src/server.mjs
+node --test
+```
+
+Result: `PASS`, 7 tests passed.
+
+### Railway
+
+- Project: `github-add`.
+- Project ID: `6eebe485-ad39-41e6-9356-061bf7aee00a`.
+- Environment: `production`.
+- Environment ID: `0739740f-5c09-4d8c-a249-5252578e011d`.
+- Service: `github-add-api`.
+- Service ID: `9d3363cc-b284-41a5-b6a9-c7e4401b8eb0`.
+- Deployment ID: `5bec6052-e5f8-4aa4-91c7-8ed82824b9f8`.
+- Deployment status: `SUCCESS`.
+- Service domain: `github-add-api-production.up.railway.app`.
+- Target port: `8080`.
+
+### Remaining blocker
+
+`GITHUB_TOKEN` is not set in Railway service variables yet. Do not run `/patch/preview` or `/patch/apply` live smoke until this secret is configured.
+
+After `GITHUB_TOKEN` is set, run the smoke checklist above and update this report with:
+
+- `/health` HTTP status;
+- `/openapi.json` validation result;
+- preview `patch_id`;
+- apply `commit_sha`;
+- reread proof;
+- negative cases: 409 SHA mismatch, 422 missing marker, 422 duplicate marker, protected path blocked.
