@@ -1,0 +1,20 @@
+{
+  "name": "github-add",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Small GitHub Additional Commands service for safe marker-based patch preview/apply.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/server.mjs && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.1.1",
+    "diff": "^7.0.0"
+  },
+  "devDependencies": {}
+}
