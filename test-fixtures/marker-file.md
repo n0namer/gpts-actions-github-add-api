@@ -7,7 +7,7 @@ Do not use production files for the first apply test.
 ## Replace block
 
 <!-- GPT:START smoke-block -->
-old smoke content
+bearer e2e verification 2026-05-26T15:13:31Z
 <!-- GPT:END smoke-block -->
 
 ## Insert marker
