@@ -1,4 +1,13 @@
 export function openApiDocument() {
+  const patchRequestProperties = {
+    repository_full_name: { type: "string", examples: ["n0namer/GitHub-add"] },
+    branch: { type: "string", examples: ["main"] },
+    path: { type: "string", examples: ["test-fixtures/marker-file.md"] },
+    expected_sha: { type: "string" },
+    operation: { oneOf: [{ $ref: "#/components/schemas/ReplaceBetweenMarkersOperation" }, { $ref: "#/components/schemas/InsertAfterMarkerOperation" }] },
+    options: { type: "object", properties: { max_changed_lines: { type: "integer" } } },
+  };
+
   return {
     openapi: "3.1.0",
     info: {
@@ -51,20 +60,16 @@ export function openApiDocument() {
         PatchRequest: {
           type: "object",
           required: ["repository_full_name", "branch", "path", "expected_sha", "operation"],
-          properties: {
-            repository_full_name: { type: "string", examples: ["n0namer/GitHub-add"] },
-            branch: { type: "string", examples: ["main"] },
-            path: { type: "string", examples: ["test-fixtures/marker-file.md"] },
-            expected_sha: { type: "string" },
-            operation: { oneOf: [{ $ref: "#/components/schemas/ReplaceBetweenMarkersOperation" }, { $ref: "#/components/schemas/InsertAfterMarkerOperation" }] },
-            options: { type: "object", properties: { max_changed_lines: { type: "integer" } } },
-          },
+          properties: patchRequestProperties,
         },
         PatchApplyRequest: {
-          allOf: [
-            { $ref: "#/components/schemas/PatchRequest" },
-            { type: "object", required: ["commit_message"], properties: { commit_message: { type: "string" }, preview_patch_id: { type: "string" } } },
-          ],
+          type: "object",
+          required: ["repository_full_name", "branch", "path", "expected_sha", "operation", "commit_message"],
+          properties: {
+            ...patchRequestProperties,
+            commit_message: { type: "string" },
+            preview_patch_id: { type: "string" },
+          },
         },
         ReplaceBetweenMarkersOperation: {
           type: "object",
