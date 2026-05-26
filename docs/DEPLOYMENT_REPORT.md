@@ -31,6 +31,13 @@ REQUEST_ID: `GITHUB_ADD_MVP_001`
   - `/patch/preview` returns `patch_id`;
   - `/patch/apply` accepts `preview_patch_id`;
   - when `PATCH_REQUIRE_PREVIEW=true`, apply requires a matching, non-expired preview.
+- Bearer auth (added 2026-05-26):
+  - `POST /patch/preview` and `POST /patch/apply` require `Authorization: Bearer <token>`;
+  - Constant-time comparison via `crypto.timingSafeEqual`;
+  - `503 AUTH_NOT_CONFIGURED` when `ACTION_REQUIRE_BEARER=true` but `ACTION_BEARER_TOKEN` is missing;
+  - `401 AUTH_FAILED` for missing/wrong token;
+  - `/health` and `/openapi.json` remain public (no auth);
+  - OpenAPI document advertises `ActionBearerAuth` security scheme on patch operations only.
 
 ## Local verification
 
@@ -75,8 +82,40 @@ npm run check
 
 Preview diff used exact `<!-- GPT:START smoke-block -->` and `<!-- GPT:END smoke-block -->` lines. Reread confirmed both comment markers were untouched after apply.
 
+## Bearer Auth — live smoke 2026-05-26
+
+### Code changes (commit `4e5a337`)
+
+- `src/config.mjs`: added `actionBearerToken` and `actionRequireBearer` (default `true`).
+- `src/server.mjs`: `requireBearer()` helper using `crypto.timingSafeEqual` constant-time comparison.
+- `src/openapi.mjs`: `components.securitySchemes.ActionBearerAuth` (http, bearer, opaque) — security on patch operations only.
+- `src/safety.mjs`: fixed `GitHubAdddError` typo → `GitHubAddError`.
+- `tests/server.test.mjs`: 7 new auth tests — 13 total, all PASS.
+
+### Railway variables
+
+- `ACTION_BEARER_TOKEN`: set (64-char hex, prefix `951b4ae1`).
+- `ACTION_REQUIRE_BEARER`: `true`.
+
+### Smoke cycle
+
+| # | Test | Evidence | Result |
+|---|------|----------|--------|
+| 1 | Health `GET /health` without Bearer | HTTP 200 `{"status":"ok"}` | PASS |
+| 2 | OpenAPI `/openapi.json` | `/patch/preview` has `security: [{ActionBearerAuth:[]}]`, `/health` has no security, `ActionBearerAuth` scheme present | PASS |
+| 3 | `/patch/preview` without Authorization header | HTTP 401 `{"status":"AUTH_FAILED"}` | PASS |
+| 4 | `/patch/preview` with wrong Bearer token | HTTP 401 `{"status":"AUTH_FAILED"}` | PASS |
+| 5 | `/patch/preview` with correct Bearer token | HTTP 200 `{"status":"DRY_RUN_PASS"}`, `patch_id` present, `markers_found: {start:1, end:1}` | PASS |
+
+### Commit evidence
+
+- Bearer auth code: `4e5a337` (commit pushed to main).
+- Bearer auth deploy: `c0625e7f-b708-4822-bbed-4d9760c13374` (Railway deployment, SUCCESS).
+
 ### Secret safety
 
-- No secrets printed, echoed, logged, or exposed in any output.
-- `GITHUB_TOKEN` value masked in all operations.
+- Generated token is 64 random hex characters (32 bytes).
+- Set via Railway GraphQL `variableUpsert` (never printed, echoed, or logged).
+- Token value never stored in code, config, or memory files.
 - `RAILWAY_API_TOKEN` used only via GraphQL, never disclosed.
+- Only the first 8 hex characters (token prefix) recorded for verification.

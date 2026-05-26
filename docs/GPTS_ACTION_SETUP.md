@@ -22,7 +22,33 @@ https://github-add-api-production.up.railway.app/openapi.json
 4. Save the action.
 5. Run the health operation first.
 
-No GPTS-side API key is required for the MVP. GitHub authentication is handled by the Railway service through `GITHUB_TOKEN`, which must remain a Railway secret.
+## Authentication
+
+All `POST /patch/preview` and `POST /patch/apply` requests require an `Authorization: Bearer <token>` header.
+
+### GPT Builder setup
+
+1. In the GPT Builder **Actions** section, after importing the OpenAPI schema, click on the **Authentication** dropdown.
+2. Select **API Key** → **Bearer**.
+3. The token is the `ACTION_BEARER_TOKEN` — **not** a GitHub PAT. This token is set as a Railway secret.
+4. OpenAI will pass the token as `Authorization: Bearer {{key}}` on every protected endpoint request.
+
+The `GET /health` and `GET /openapi.json` endpoints are public (no auth required).
+
+### Token management
+
+- The token is set via the Railway environment variable `ACTION_BEARER_TOKEN`.
+- When `ACTION_REQUIRE_BEARER=true` (default), all patch endpoints reject unauthenticated requests.
+- If `ACTION_REQUIRE_BEARER=true` but `ACTION_BEARER_TOKEN` is empty, the server responds `503 AUTH_NOT_CONFIGURED`.
+- Use a strong random token (e.g., 64 hex chars = 32 bytes). Generate locally with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Then set it on Railway via `railway variables set ACTION_BEARER_TOKEN=<token>` or the Railway dashboard.
+
+GitHub authentication is handled separately by the Railway service through `GITHUB_TOKEN`, which must remain a Railway secret.
 
 ## Expected operations
 

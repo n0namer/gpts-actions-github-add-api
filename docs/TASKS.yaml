@@ -253,6 +253,32 @@ tasks:
     dependencies: [GHA-PIPE-001]
     status: DONE
     write_back_target: docs/RUNBOOK.md
+  - task_id: GHA-AUTH-001
+    stage: stage_4_api
+    action: Add Bearer auth protection to patch endpoints
+    edit_steps:
+      - src/config.mjs: add actionBearerToken and actionRequireBearer (default true)
+      - src/server.mjs: add requireBearer() with crypto.timingSafeEqual
+      - 503 AUTH_NOT_CONFIGURED when requireBearer=true and token missing
+      - 401 AUTH_FAILED for missing/wrong Authorization header
+      - Only enforce on POST /patch/preview and /patch/apply
+      - src/openapi.mjs: add components.securitySchemes.ActionBearerAuth
+      - Add security: [{ActionBearerAuth: []}] to patch operations only
+      - tests: 7 new auth tests
+      - Fix GitHubAdddError typo in safety.mjs
+    dod:
+      - 13/13 tests PASS (7 new auth)
+      - /health public without Bearer
+      - /openapi.json shows Bearer on patch only
+      - /patch/preview without Bearer returns 401
+      - /patch/preview with correct Bearer returns DRY_RUN_PASS
+      - Railway env: ACTION_BEARER_TOKEN and ACTION_REQUIRE_BEARER=true set
+    evidence_required: [commit 4e5a337, deploy c0625e7f, live smoke PASS]
+    validator: live smoke cycle (5 steps)
+    owner_tool: GitHub connector
+    dependencies: [GHA-010]
+    status: DONE
+    write_back_target: docs/DEPLOYMENT_REPORT.md
 
 replan_hooks:
   after_evidence_gap:
