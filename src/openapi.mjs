@@ -18,20 +18,29 @@ export function openApiDocument() {
         post: {
           operationId: "githubPatchPreview",
           summary: "Preview a safe marker-based patch without committing",
+          security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchRequest" } } } },
-          responses: { "200": { description: "Preview passed" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
+          responses: { "200": { description: "Preview passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
         },
       },
       "/patch/apply": {
         post: {
           operationId: "githubPatchApply",
           summary: "Apply a previously previewed marker-based patch and commit it",
+          security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchApplyRequest" } } } },
-          responses: { "200": { description: "Apply passed" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
+          responses: { "200": { description: "Apply passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
         },
       },
     },
     components: {
+      securitySchemes: {
+        ActionBearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "opaque",
+        },
+      },
       schemas: {
         PatchRequest: {
           type: "object",

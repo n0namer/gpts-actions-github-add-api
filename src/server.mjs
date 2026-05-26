@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { GitHubAddError, normalizeError } from "./errors.mjs";
 import { loadConfig } from "./config.mjs";
 import { applyOperation, countChangedLines, createDiffPreview, replaceBetweenMarkers, insertAfterMarker, sha256 } from "./patch.mjs";
@@ -15,6 +16,32 @@ export { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
 const locks = new Set();
+
+function constantTimeEqual(a, b) {
+  if (a.length !== b.length) {
+    // Still do a comparison to prevent length-based timing leak
+    const buf = Buffer.alloc(Math.max(a.length, b.length) || 1);
+    timingSafeEqual(buf.slice(0, 1), buf.slice(0, 1));
+    return false;
+  }
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+function requireBearer(req, config) {
+  const token = config.actionBearerToken;
+  if (config.actionRequireBearer && !token) {
+    throw new GitHubAddError(503, { status: "AUTH_NOT_CONFIGURED", message: "Bearer token not configured on server" });
+  }
+  if (!config.actionRequireBearer) return;
+  const header = req.headers["authorization"] || req.headers["Authorization"] || "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "Missing or malformed Authorization header" });
+  }
+  if (!constantTimeEqual(match[1], token)) {
+    throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "Invalid Bearer token" });
+  }
+}
 
 function send(res, statusCode, payload) {
   res.writeHead(statusCode, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -187,8 +214,14 @@ export function createRequestHandler(options = {}) {
       const url = new URL(req.url || "/", "http://localhost");
       if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { status: "ok", service: "github-add", version: "0.1.0" });
       if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
-      if (req.method === "POST" && url.pathname === "/patch/preview") return send(res, 200, await handlePreview(validatePayload(await readBody(req)), config, deps));
-      if (req.method === "POST" && url.pathname === "/patch/apply") return send(res, 200, await handleApply(await readBody(req), config, deps));
+      if (req.method === "POST" && url.pathname === "/patch/preview") {
+        requireBearer(req, config);
+        return send(res, 200, await handlePreview(validatePayload(await readBody(req)), config, deps));
+      }
+      if (req.method === "POST" && url.pathname === "/patch/apply") {
+        requireBearer(req, config);
+        return send(res, 200, await handleApply(await readBody(req), config, deps));
+      }
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("not found");

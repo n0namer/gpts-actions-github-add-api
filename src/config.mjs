@@ -5,6 +5,8 @@ export function loadConfig(env = process.env) {
   return {
     port: Number(env.PORT || 8080),
     githubToken: env.GITHUB_TOKEN || "",
+    actionBearerToken: env.ACTION_BEARER_TOKEN || "",
+    actionRequireBearer: String(env.ACTION_REQUIRE_BEARER ?? "true").toLowerCase() !== "false",
     allowedRepos: csv(env.GITHUB_ALLOWED_REPOS, "n0namer/GitHub-add"),
     allowedBranches: csv(env.GITHUB_ALLOWED_BRANCHES, "main"),
     allowedPathPrefixes: csv(env.GITHUB_ALLOWED_PATH_PREFIXES, "docs/,prompts/,schemas/,workspace/,test-fixtures/"),

@@ -5,7 +5,7 @@ export function validateAccess(payload, config) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
   }
   if (!config.allowedBranches.includes(payload.branch)) {
-    throw new GitHubAdddError(403, { status: "NOT_ALLOWED", reason: "branch_not_allowed" });
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "branch_not_allowed" });
   }
   if (!config.allowedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "path_prefix_not_allowed" });
