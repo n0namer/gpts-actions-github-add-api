@@ -2,14 +2,17 @@ import { createServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { GitHubAddError, normalizeError } from "./errors.mjs";
 import { loadConfig } from "./config.mjs";
-import { applyOperation, countChangedLines, createDiffPreview, replaceBetweenMarkers, insertAfterMarker, sha256 } from "./patch.mjs";
+import {
+  applyOperation, countChangedLines, createDiffPreview, replaceBetweenMarkers, insertAfterMarker, sha256,
+  replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView,
+} from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
 import { readFileFromGitHub, updateFileOnGitHub } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 export { GitHubAddError } from "./errors.mjs";
 export { loadConfig } from "./config.mjs";
-export { applyOperation, replaceBetweenMarkers, insertAfterMarker } from "./patch.mjs";
+export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
 export { scanSecrets, validateAccess } from "./safety.mjs";
 export { readFileFromGitHub, updateFileOnGitHub } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
@@ -19,7 +22,6 @@ const locks = new Set();
 
 function constantTimeEqual(a, b) {
   if (a.length !== b.length) {
-    // Still do a comparison to prevent length-based timing leak
     const buf = Buffer.alloc(Math.max(a.length, b.length) || 1);
     timingSafeEqual(buf.slice(0, 1), buf.slice(0, 1));
     return false;
@@ -83,6 +85,29 @@ function validateOperation(operation) {
     if (typeof operation.text !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.text is required" });
     return operation;
   }
+  if (operation.type === "replace_exact_once") {
+    requireString(operation.old_text, "operation.old_text");
+    if (typeof operation.new_text !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.new_text is required" });
+    return operation;
+  }
+  if (operation.type === "replace_with_context") {
+    requireString(operation.old_text, "operation.old_text");
+    if (typeof operation.new_text !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.new_text is required" });
+    if (!operation.before && !operation.after) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "at least one of operation.before or operation.after is required" });
+    return operation;
+  }
+  if (operation.type === "replace_line_range") {
+    if (typeof operation.start_line !== "number") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.start_line is required" });
+    if (typeof operation.end_line !== "number") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.end_line is required" });
+    requireString(operation.expected_old_text, "operation.expected_old_text");
+    if (typeof operation.new_text !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.new_text is required" });
+    return operation;
+  }
+  if (operation.type === "insert_after_exact_once") {
+    requireString(operation.anchor_text, "operation.anchor_text");
+    if (typeof operation.insert_text !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation.insert_text is required" });
+    return operation;
+  }
   throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "unsupported operation.type" });
 }
 
@@ -112,6 +137,7 @@ async function buildOutcome(payload, config, deps) {
     file,
     newContent: patched.content,
     markers_found: patched.markers_found,
+    target_match: patched.target_match,
     diff_preview,
     changedLines,
     patch_id: sha256(JSON.stringify({ payload, new_content_sha256: sha256(patched.content) })),
@@ -144,7 +170,7 @@ function requirePreview(patchId, payload, required) {
 async function handlePreview(payload, config, deps) {
   const outcome = await buildOutcome(payload, config, deps);
   savePreview(outcome.patch_id, payload);
-  return {
+  const result = {
     status: "DRY_RUN_PASS",
     can_apply: true,
     repository_full_name: payload.repository_full_name,
@@ -166,6 +192,8 @@ async function handlePreview(payload, config, deps) {
       secret_scan_pass: true,
     },
   };
+  if (outcome.target_match) result.target_match = outcome.target_match;
+  return result;
 }
 
 async function handleApply(rawPayload, config, deps) {
@@ -184,7 +212,7 @@ async function handleApply(rawPayload, config, deps) {
     if (reread.content !== outcome.newContent) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
     if (previewPatchId) previews.delete(previewPatchId);
 
-    return {
+    const applyResult = {
       status: "APPLY_PASS",
       repository_full_name: payload.repository_full_name,
       branch: payload.branch,
@@ -197,6 +225,8 @@ async function handleApply(rawPayload, config, deps) {
       changed_lines: { added: outcome.changedLines.added, deleted: outcome.changedLines.deleted },
       evidence: { expected_sha_matched: true, markers_unique: true, diff_within_limit: true, secret_scan_pass: true, reread_verified: true },
     };
+    if (outcome.target_match) applyResult.target_match = outcome.target_match;
+    return applyResult;
   } finally {
     locks.delete(key);
   }
@@ -212,7 +242,7 @@ export function createRequestHandler(options = {}) {
   return async function requestHandler(req, res) {
     try {
       const url = new URL(req.url || "/", "http://localhost");
-      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { status: "ok", service: "github-add", version: "0.1.0" });
+      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { status: "ok", service: "github-add", version: "0.2.0" });
       if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
       if (req.method === "POST" && url.pathname === "/patch/preview") {
         requireBearer(req, config);
@@ -221,6 +251,35 @@ export function createRequestHandler(options = {}) {
       if (req.method === "POST" && url.pathname === "/patch/apply") {
         requireBearer(req, config);
         return send(res, 200, await handleApply(await readBody(req), config, deps));
+      }
+      if (req.method === "POST" && url.pathname === "/file/read") {
+        requireBearer(req, config);
+        const body = await readBody(req);
+        const repo = requireString(body.repository_full_name, "repository_full_name");
+        const branch = requireString(body.branch, "branch");
+        const path = requireString(body.path, "path");
+        const readPayload = { repository_full_name: repo, branch, path };
+        validateAccess(readPayload, config);
+        const file = await deps.readFile(readPayload, config);
+        const lines = createLineView(file.content);
+        const result = {
+          status: "READ_PASS",
+          repository_full_name: repo,
+          branch,
+          path,
+          file_sha: file.sha,
+          size: file.size,
+          line_count: lines.length,
+          content: file.content,
+          lines,
+        };
+        if (body.options?.fields) {
+          const fields = new Set(body.options.fields);
+          for (const k of Object.keys(result)) {
+            if (!fields.has(k)) delete result[k];
+          }
+        }
+        return send(res, 200, result);
       }
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
