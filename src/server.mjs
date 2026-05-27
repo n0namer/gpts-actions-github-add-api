@@ -72,8 +72,43 @@ function requireString(value, field) {
   return value;
 }
 
+function firstString(...values) {
+  for (const value of values) {
+    if (typeof value === "string") return value;
+  }
+  return undefined;
+}
+
+function normalizeOperation(operation) {
+  if (!operation || typeof operation !== "object") return operation;
+  if (operation.type === "replace_text" || operation.type === "replace") {
+    const oldText = firstString(
+      operation.old_text,
+      operation.oldText,
+      operation.search_text,
+      operation.searchText,
+      operation.search,
+      operation.target_text,
+      operation.targetText,
+      operation.text,
+    );
+    const newText = firstString(
+      operation.new_text,
+      operation.newText,
+      operation.replace_with,
+      operation.replaceWith,
+      operation.replacement,
+      operation.new,
+      operation.value,
+    );
+    return { ...operation, type: "replace_exact_once", old_text: oldText, new_text: newText };
+  }
+  return operation;
+}
+
 function validateOperation(operation) {
   if (!operation || typeof operation !== "object") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "operation is required" });
+  operation = normalizeOperation(operation);
   if (operation.type === "replace_between_markers") {
     requireString(operation.start_marker, "operation.start_marker");
     requireString(operation.end_marker, "operation.end_marker");
