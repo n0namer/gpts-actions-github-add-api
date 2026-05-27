@@ -312,6 +312,7 @@ export function createRequestHandler(options = {}) {
           branch,
           path,
           file_sha: file.sha,
+          sha: file.sha,
           size: file.size,
           line_count: lines.length,
           content: file.content,
