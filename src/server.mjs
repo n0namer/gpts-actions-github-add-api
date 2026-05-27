@@ -151,7 +151,7 @@ function validatePayload(payload) {
     repository_full_name: requireString(payload.repository_full_name, "repository_full_name"),
     branch: requireString(payload.branch, "branch"),
     path: requireString(payload.path, "path"),
-    expected_sha: requireString(payload.expected_sha, "expected_sha"),
+    expected_sha: requireString(payload.expected_sha || payload.file_sha || payload.sha, "expected_sha"),
     operation: validateOperation(payload.operation),
     options: payload.options || {},
   };
