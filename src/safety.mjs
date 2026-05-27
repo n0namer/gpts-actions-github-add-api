@@ -1,13 +1,13 @@
 import { GitHubAddError } from "./errors.mjs";
 
 export function validateAccess(payload, config) {
-  if (!config.allowedRepos.includes(payload.repository_full_name)) {
+  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(payload.repository_full_name)) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
   }
-  if (!config.allowedBranches.includes(payload.branch)) {
+  if (config.allowedBranches.length > 0 && !config.allowedBranches.includes(payload.branch)) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "branch_not_allowed" });
   }
-  if (!config.allowedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
+  if (config.allowedPathPrefixes.length > 0 && !config.allowedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "path_prefix_not_allowed" });
   }
   if (payload.path.includes("..") || payload.path.startsWith("/") || payload.path.includes("\\")) {
