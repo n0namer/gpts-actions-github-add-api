@@ -9,6 +9,8 @@ export function openApiDocument() {
         { $ref: "#/components/schemas/ReplaceBetweenMarkersOperation" },
         { $ref: "#/components/schemas/InsertAfterMarkerOperation" },
         { $ref: "#/components/schemas/ReplaceExactOnceOperation" },
+        { $ref: "#/components/schemas/ReplaceTextOperation" },
+        { $ref: "#/components/schemas/ReplaceOperation" },
         { $ref: "#/components/schemas/ReplaceWithContextOperation" },
         { $ref: "#/components/schemas/ReplaceLineRangeOperation" },
         { $ref: "#/components/schemas/InsertAfterExactOnceOperation" },
