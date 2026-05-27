@@ -9,8 +9,6 @@ export function openApiDocument() {
         { $ref: "#/components/schemas/ReplaceBetweenMarkersOperation" },
         { $ref: "#/components/schemas/InsertAfterMarkerOperation" },
         { $ref: "#/components/schemas/ReplaceExactOnceOperation" },
-        { $ref: "#/components/schemas/ReplaceTextOperation" },
-        { $ref: "#/components/schemas/ReplaceOperation" },
         { $ref: "#/components/schemas/ReplaceWithContextOperation" },
         { $ref: "#/components/schemas/ReplaceLineRangeOperation" },
         { $ref: "#/components/schemas/InsertAfterExactOnceOperation" },
@@ -32,7 +30,7 @@ export function openApiDocument() {
     openapi: "3.1.0",
     info: {
       title: "GitHub ADD API",
-      version: "0.2.2",
+      version: "0.2.3",
       description: "Safe marker-based and text-based patch preview/apply service for GPTS.",
     },
     servers: [
@@ -141,16 +139,6 @@ export function openApiDocument() {
           type: "object",
           required: ["type", "old_text", "new_text"],
           properties: { type: { const: "replace_exact_once" }, old_text: { type: "string" }, new_text: { type: "string" } },
-        },
-        ReplaceTextOperation: {
-          type: "object",
-          required: ["type", "old_text", "new_text"],
-          properties: { type: { const: "replace_text" }, old_text: { type: "string" }, new_text: { type: "string" } },
-        },
-        ReplaceOperation: {
-          type: "object",
-          required: ["type", "old_text", "new_text"],
-          properties: { type: { const: "replace" }, old_text: { type: "string" }, new_text: { type: "string" } },
         },
         ReplaceWithContextOperation: {
           type: "object",
