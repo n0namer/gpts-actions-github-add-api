@@ -142,6 +142,16 @@ export function openApiDocument() {
           required: ["type", "old_text", "new_text"],
           properties: { type: { const: "replace_exact_once" }, old_text: { type: "string" }, new_text: { type: "string" } },
         },
+        ReplaceTextOperation: {
+          type: "object",
+          required: ["type", "old_text", "new_text"],
+          properties: { type: { const: "replace_text" }, old_text: { type: "string" }, new_text: { type: "string" } },
+        },
+        ReplaceOperation: {
+          type: "object",
+          required: ["type", "old_text", "new_text"],
+          properties: { type: { const: "replace" }, old_text: { type: "string" }, new_text: { type: "string" } },
+        },
         ReplaceWithContextOperation: {
           type: "object",
           required: ["type", "old_text", "new_text"],
