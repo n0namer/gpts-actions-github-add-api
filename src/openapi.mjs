@@ -30,7 +30,7 @@ export function openApiDocument() {
     openapi: "3.1.0",
     info: {
       title: "GitHub ADD API",
-      version: "0.2.1",
+      version: "0.2.2",
       description: "Safe marker-based and text-based patch preview/apply service for GPTS.",
     },
     servers: [
