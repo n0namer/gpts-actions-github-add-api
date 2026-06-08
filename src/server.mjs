@@ -415,6 +415,10 @@ export function createRequestHandler(options = {}) {
         }
         return send(res, 200, result);
       }
+      if (req.method === "POST" && url.pathname === "/file/create") {
+        requireBearer(req, config);
+        return send(res, 200, await handleCreate(await readBody(req), config, deps));
+      }
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("not found");
