@@ -6,6 +6,7 @@ import { applyOperation, countChangedLines, createDiffPreview, sha256, createLin
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
 import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
+import { commands, VERSION, validateCommands } from "./commands/index.mjs";
 
 const previews = new Map();
 const locks = new Set();
