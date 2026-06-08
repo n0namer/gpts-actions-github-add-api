@@ -243,7 +243,7 @@ function requirePreview(patchId, payload, required) {
   if (!required) return;
   if (!patchId) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "preview_patch_id is required when PATCH_REQUIRE_PREVIEW=true" });
   const preview = previews.get(patchId);
-  if (!preview || preview.expiresAt < date.now() || preview.signature !== previewSignature(payload)) {
+  if (!preview || preview.expiresAt < Date.now() || preview.signature !== previewSignature(payload)) {
     throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "preview_required_or_expired" });
   }
 }
@@ -284,7 +284,7 @@ async function handleApply(rawPayload, config, deps) {
   requirePreview(previewPatchId, payload, config.requirePreview);
 
   const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
-  if (locks.has(Key))) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  if (locks.has(key))) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
   locks.add(key);
   try {
     const outcome = await buildOutcome(payload, config, deps);
