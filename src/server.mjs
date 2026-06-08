@@ -369,6 +369,7 @@ export function createRequestHandler(options = {}) {
   const deps = {
     readFile: options.readFile || readFileFromGitHub,
     updateFile: options.updateFile || updateFileOnGitHub,
+    createFile: options.createFile || createFileOnGitHub,
   };
 
   return async function requestHandler(req, res) {
