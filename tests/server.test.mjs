@@ -33,6 +33,40 @@ End.
 
 /* ──── Existing marker tests ──── */
 
+test("command registry is valid and every command is present in OpenAPI", () => {
+  assert.equal(validateCommands(commands), true);
+  const doc = openApiDocument();
+
+  for (const command of commands) {
+    const pathDoc = doc.paths[command.path];
+    assert.ok(pathDoc, `missing path ${command.path}`);
+    const operation = pathDoc[command.method.toLowerCase()];
+    assert.ok(operation, `missing operation ${command.method} ${command.path}`);
+    assert.equal(operation.operationId, command.operationId);
+    if (command.auth === "bearer") assert.deepEqual(operation.security, [{ ActionBearerAuth: [] }]);
+    if (command.requestSchemaRef) assert.equal(operation.requestBody.content["application/json"].schema.$ref, command.requestSchemaRef);
+  }
+});
+
+test("production server dispatches registered /file/read command", async () => {
+  const handler = createProductionRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content: fixture, sha: "sha-before", size: Buffer.byteLength(fixture) }),
+    updateFile: async () => ({ commit_sha: "unused", file_sha_after: "unused" }),
+    createFile: async () => ({ commit_sha: "unused", file_sha_after: "unused" }),
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/file/read`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/marker-file.md" }) });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, "READ_PASS");
+    assert.equal(body.file_sha, "sha-before");
+  } finally { server.close(); }
+});
+
 test("replaceBetweenMarkers preserves markers and replaces only inner content", () => {
   const result = replaceBetweenMarkers(
     fixture,
