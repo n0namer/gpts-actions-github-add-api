@@ -233,7 +233,7 @@ export function createRequestHandler(options = {}) {
 export function startServer(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const server = createServer(createRequestHandler({ ...options, config }));
-  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port, version: "0.2.2" })));
+  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port, version: "0.2.4" })));
   return server;
 }
 
