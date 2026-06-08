@@ -30,8 +30,8 @@ export function openApiDocument() {
     openapi: "3.1.0",
     info: {
       title: "GitHub ADD API",
-      version: "0.2.3",
-      description: "Safe marker-based and text-based patch preview/apply service for GPTS.",
+      version: "0.2.4",
+      description: "Safe GitHub file read/create and marker-based or text-based patch preview/apply service for GPTS.",
     },
     servers: [
       {
@@ -74,6 +74,15 @@ export function openApiDocument() {
           responses: { "200": { description: "File read successfully" } },
         },
       },
+      "/file/create": {
+        post: {
+          operationId: "githubCreateFile",
+          summary: "Create a new file in GitHub and commit it",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/CreateFileRequest" } } } },
+          responses: { "200": { description: "File created successfully" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "409": { description: "File already exists" }, "422": { description: "Create cannot be applied safely" } },
+        },
+      },
       "/patch/preview": {
         post: {
           operationId: "githubPatchPreview",
@@ -109,6 +118,17 @@ export function openApiDocument() {
             status: { type: "string", examples: ["ok"] },
             service: { type: "string", examples: ["github-add"] },
             version: { type: "string", examples: ["0.1.0"] },
+          },
+        },
+        CreateFileRequest: {
+          type: "object",
+          required: ["repository_full_name", "branch", "path", "content", "commit_message"],
+          properties: {
+            repository_full_name: { type: "string", examples: ["n0namer/GitHub-add"] },
+            branch: { type: "string", examples: ["main"] },
+            path: { type: "string", examples: ["docs/new-file.md"] },
+            content: { type: "string" },
+            commit_message: { type: "string" },
           },
         },
         PatchRequest: {

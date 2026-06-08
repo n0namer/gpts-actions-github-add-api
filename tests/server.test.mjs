@@ -64,8 +64,9 @@ test("validateAccess blocks disallowed protected paths", () => {
 });
 
 test("scanSecrets blocks obvious tokens", () => {
+  const fakeToken = "ghp_" + "123456789012345678901234567890123456";
   assert.throws(
-    () => scanSecrets("const token = 'ghp_123456789012345678901234567890123456';"),
+    () => scanSecrets(`const token = '${fakeToken}';`),
     (error) => error instanceof GitHubAddError && error.payload.reason === "secret_scan_failed",
   );
 });
@@ -177,6 +178,7 @@ test("auth: OpenAPI advertises Bearer for patch operations only", async () => {
     assert.deepEqual(doc.paths["/patch/preview"].post.security, [{ ActionBearerAuth: [] }]);
     assert.deepEqual(doc.paths["/patch/apply"].post.security, [{ ActionBearerAuth: [] }]);
     assert.deepEqual(doc.paths["/file/read"].post.security, [{ ActionBearerAuth: [] }]);
+    assert.deepEqual(doc.paths["/file/create"].post.security, [{ ActionBearerAuth: [] }]);
     assert.ok(doc.components.securitySchemes.ActionBearerAuth);
   } finally { server.close(); }
 });
@@ -310,6 +312,40 @@ test("/file/read without Bearer returns 401", async () => {
   } finally { server.close(); }
 });
 
+test("/file/create returns CREATE_PASS and rereads content", async () => {
+  let content = "";
+  let sha = "";
+  const createdContent = "# New file\n";
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content, sha, size: Buffer.byteLength(content) }),
+    updateFile: async () => ({ commit_sha: "unused", file_sha_after: "unused" }),
+    createFile: async (_payload, nextContent) => { content = nextContent; sha = "sha-created"; return { commit_sha: "commit-create", file_sha_after: sha }; },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/new-file.md", content: createdContent, commit_message: "test: create file" }) });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, "CREATE_PASS");
+    assert.equal(body.file_sha_after, "sha-created");
+    assert.equal(body.commit_sha, "commit-create");
+    assert.equal(body.reread_verified, true);
+  } finally { server.close(); }
+});
+
+test("/file/create without Bearer returns 401", async () => {
+  const { server, base } = await createAuthTestServer();
+  try {
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/new-file.md", content: "# New file\n", commit_message: "test: create file" }) });
+    assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.status, "AUTH_FAILED");
+  } finally { server.close(); }
+});
+
 /* ──── Preview/apply with replace_exact_once ──── */
 
 test("preview and apply with replace_exact_once", async () => {
@@ -380,12 +416,15 @@ test("OpenAPI has flat PatchApplyRequest no allOf and new operations", async () 
     const doc = await res.json();
     assert.equal(doc.components.schemas.PatchApplyRequest.type, "object");
     assert.equal(!!doc.components.schemas.PatchApplyRequest.allOf, false);
+    assert.ok(doc.components.schemas.CreateFileRequest);
     assert.ok(doc.components.schemas.ReplaceExactOnceOperation);
     assert.ok(doc.components.schemas.ReplaceWithContextOperation);
     assert.ok(doc.components.schemas.ReplaceLineRangeOperation);
     assert.ok(doc.components.schemas.InsertAfterExactOnceOperation);
     assert.ok(doc.paths["/file/read"]);
     assert.equal(doc.paths["/file/read"].post.operationId, "githubReadFile");
+    assert.ok(doc.paths["/file/create"]);
+    assert.equal(doc.paths["/file/create"].post.operationId, "githubCreateFile");
   } finally { server.close(); }
 });
 

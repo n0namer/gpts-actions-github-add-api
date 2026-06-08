@@ -7,14 +7,14 @@ import {
   replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView,
 } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
-import { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 export { GitHubAddError } from "./errors.mjs";
 export { loadConfig } from "./config.mjs";
 export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
 export { scanSecrets, validateAccess } from "./safety.mjs";
-export { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+export { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
@@ -41,7 +41,7 @@ async function healthPayload(config) {
   const payload = {
     status: "ok",
     service: "github-add",
-    version: "0.2.1",
+    version: "0.2.4",
     github_token_runtime: tokenRuntimeDiagnostics(config),
   };
 
@@ -203,6 +203,18 @@ function validatePayload(payload) {
   };
 }
 
+function validateCreatePayload(payload) {
+  if (!payload || typeof payload !== "object") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "payload is required" });
+  if (typeof payload.content !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "content is required" });
+  return {
+    repository_full_name: requireString(payload.repository_full_name, "repository_full_name"),
+    branch: requireString(payload.branch, "branch"),
+    path: requireString(payload.path, "path"),
+    content: payload.content,
+    commit_message: requireString(payload.commit_message, "commit_message"),
+  };
+}
+
 async function buildOutcome(payload, config, deps) {
   validateAccess(payload, config);
   const file = await deps.readFile(payload, config);
@@ -284,7 +296,7 @@ async function handleApply(rawPayload, config, deps) {
   requirePreview(previewPatchId, payload, config.requirePreview);
 
   const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
-  if (locks.has(key))) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
   locks.add(key);
   try {
     const outcome = await buildOutcome(payload, config, deps);
@@ -322,11 +334,42 @@ async function handleApply(rawPayload, config, deps) {
   }
 }
 
+async function handleCreate(rawPayload, config, deps) {
+  const payload = validateCreatePayload(rawPayload);
+  validateAccess(payload, config);
+  const size = Buffer.byteLength(payload.content, "utf8");
+  if (size > config.maxFileBytes) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "file_too_large", max_file_bytes: config.maxFileBytes });
+  scanSecrets(payload.content);
+
+  const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  locks.add(key);
+  try {
+    const create = await deps.createFile(payload, payload.content, payload.commit_message, config);
+    const reread = await deps.readFile(payload, config);
+    if (reread.content !== payload.content) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    return {
+      status: "CREATE_PASS",
+      repository_full_name: payload.repository_full_name,
+      branch: payload.branch,
+      path: payload.path,
+      file_sha_after: reread.sha || create.file_sha_after,
+      commit_sha: create.commit_sha,
+      size,
+      reread_verified: true,
+      evidence: { repo_allowed: true, branch_allowed: true, path_allowed: true, protected_path_blocked: false, secret_scan_pass: true, reread_verified: true },
+    };
+  } finally {
+    locks.delete(key);
+  }
+}
+
 export function createRequestHandler(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const deps = {
     readFile: options.readFile || readFileFromGitHub,
     updateFile: options.updateFile || updateFileOnGitHub,
+    createFile: options.createFile || createFileOnGitHub,
   };
 
   return async function requestHandler(req, res) {
@@ -371,6 +414,10 @@ export function createRequestHandler(options = {}) {
           }
         }
         return send(res, 200, result);
+      }
+      if (req.method === "POST" && url.pathname === "/file/create") {
+        requireBearer(req, config);
+        return send(res, 200, await handleCreate(await readBody(req), config, deps));
       }
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
