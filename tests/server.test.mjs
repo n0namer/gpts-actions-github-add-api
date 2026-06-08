@@ -178,6 +178,7 @@ test("auth: OpenAPI advertises Bearer for patch operations only", async () => {
     assert.deepEqual(doc.paths["/patch/preview"].post.security, [{ ActionBearerAuth: [] }]);
     assert.deepEqual(doc.paths["/patch/apply"].post.security, [{ ActionBearerAuth: [] }]);
     assert.deepEqual(doc.paths["/file/read"].post.security, [{ ActionBearerAuth: [] }]);
+    assert.deepEqual(doc.paths["/file/create"].post.security, [{ ActionBearerAuth: [] }]);
     assert.ok(doc.components.securitySchemes.ActionBearerAuth);
   } finally { server.close(); }
 });
