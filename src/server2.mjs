@@ -83,20 +83,26 @@ function tokenDiag(config) {
 }
 
 async function health(config) {
-  const out = { status: "ok", service: "github-add", version: "0.2.2", github_token_runtime: tokenDiag(config) };
+  const out = { status: "ok", service: "github-add", version: "0.2.3", github_token_runtime: tokenDiag(config) };
   try {
-    const a = await checkGitHubAuth({ repository_full_name: "n0namer/content-generator" }, config);
+    const probe = await readFileFromGitHub({
+      repository_full_name: "n0namer/content-generator",
+      branch: "main",
+      path: "projects/mini-product-ai-accelerator/05_BACKLOG.md",
+    }, config);
     out.github_auth = {
-      status: a.status,
-      token_env_name: a.token_env_name,
-      repository_full_name: a.repository_full_name,
-      repository_private: a.repository_private,
-      repository_permissions: a.repository_permissions,
+      status: "GITHUB_CONTENT_READ_OK",
+      token_env_name: config.githubTokenEnvName || "",
+      repository_full_name: "n0namer/content-generator",
+      branch: "main",
+      probe_path: "projects/mini-product-ai-accelerator/05_BACKLOG.md",
+      probe_file_sha: probe.sha,
+      probe_size: probe.size,
     };
   } catch (e) {
     out.github_auth = {
-      status: "GITHUB_AUTH_FAILED",
-      message: e?.payload?.message || e?.message || "GitHub auth failed",
+      status: "GITHUB_CONTENT_READ_FAILED",
+      message: e?.payload?.message || e?.message || "GitHub content read check failed",
       tried_token_env_names: e?.payload?.tried_token_env_names,
       github_status: e?.payload?.github_status || e?.status,
     };
