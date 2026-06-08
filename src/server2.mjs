@@ -4,7 +4,7 @@ import { GitHubAddError, normalizeError } from "./errors.mjs";
 import { loadConfig } from "./config.mjs";
 import { applyOperation, countChangedLines, createDiffPreview, sha256, createLineView } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
-import { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
@@ -70,6 +70,17 @@ function payload(b) {
   };
 }
 
+function createPayload(b) {
+  if (typeof b.content !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "content is required" });
+  return {
+    repository_full_name: reqstr(b.repository_full_name, "repository_full_name"),
+    branch: reqstr(b.branch, "branch"),
+    path: reqstr(b.path, "path"),
+    content: b.content,
+    commit_message: reqstr(b.commit_message, "commit_message"),
+  };
+}
+
 function tokenDiag(config) {
   const token = String(config.githubToken || "");
   const candidates = Array.isArray(config.githubTokenCandidates) ? config.githubTokenCandidates : [];
@@ -83,7 +94,7 @@ function tokenDiag(config) {
 }
 
 async function health(config) {
-  const out = { status: "ok", service: "github-add", version: "0.2.3", github_token_runtime: tokenDiag(config) };
+  const out = { status: "ok", service: "github-add", version: "0.2.4", github_token_runtime: tokenDiag(config) };
   try {
     const probe = await readFileFromGitHub({
       repository_full_name: "n0namer/content-generator",
@@ -179,15 +190,35 @@ async function read(b, config, deps) {
   return out;
 }
 
+async function createFile(b, config, deps) {
+  const p = createPayload(b);
+  validateAccess(p, config);
+  const size = Buffer.byteLength(p.content, "utf8");
+  if (size > config.maxFileBytes) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "file_too_large", max_file_bytes: config.maxFileBytes });
+  scanSecrets(p.content);
+  const key = `${p.repository_full_name}:${p.branch}:${p.path}`;
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  locks.add(key);
+  try {
+    const created = await deps.createFile(p, p.content, p.commit_message, config);
+    const reread = await deps.readFile(p, config);
+    if (reread.content !== p.content) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    return { status: "CREATE_PASS", repository_full_name: p.repository_full_name, branch: p.branch, path: p.path, file_sha_after: reread.sha || created.file_sha_after, commit_sha: created.commit_sha, size, reread_verified: true };
+  } finally {
+    locks.delete(key);
+  }
+}
+
 export function createRequestHandler(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
-  const deps = { readFile: options.readFile || readFileFromGitHub, updateFile: options.updateFile || updateFileOnGitHub };
+  const deps = { readFile: options.readFile || readFileFromGitHub, updateFile: options.updateFile || updateFileOnGitHub, createFile: options.createFile || createFileOnGitHub };
   return async (req, res) => {
     try {
       const url = new URL(req.url || "/", "http://localhost");
       if (req.method === "GET" && url.pathname === "/health") return send(res, 200, await health(config));
       if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
       if (req.method === "POST" && url.pathname === "/file/read") { bearer(req, config); return send(res, 200, await read(await body(req), config, deps)); }
+      if (req.method === "POST" && url.pathname === "/file/create") { bearer(req, config); return send(res, 200, await createFile(await body(req), config, deps)); }
       if (req.method === "POST" && url.pathname === "/patch/preview") { bearer(req, config); return send(res, 200, await preview(await body(req), config, deps)); }
       if (req.method === "POST" && url.pathname === "/patch/apply") { bearer(req, config); return send(res, 200, await apply(await body(req), config, deps)); }
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
@@ -202,7 +233,7 @@ export function createRequestHandler(options = {}) {
 export function startServer(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const server = createServer(createRequestHandler({ ...options, config }));
-  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port, version: "0.2.2" })));
+  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port, version: "0.2.4" })));
   return server;
 }
 
