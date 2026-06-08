@@ -94,6 +94,31 @@ export async function updateFileOnGitHub(payload, newContent, sha, message, conf
   };
 }
 
+export async function createFileOnGitHub(payload, content, message, config) {
+  const { owner, repo } = parseRepository(payload.repository_full_name);
+  try {
+    const response = await withGitHubAuth(config, (octokit) =>
+      octokit.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path: payload.path,
+        branch: payload.branch,
+        message,
+        content: Buffer.from(content, "utf8").toString("base64"),
+      })
+    );
+    return {
+      commit_sha: response.data.commit?.sha,
+      file_sha_after: response.data.content?.sha,
+    };
+  } catch (error) {
+    if (error?.status === 422) {
+      throw new GitHubAddError(409, { status: "FILE_ALREADY_EXISTS", path: payload.path });
+    }
+    throw error;
+  }
+}
+
 export async function checkGitHubAuth(payload, config) {
   const repositoryFullName = payload?.repository_full_name;
   return withGitHubAuth(config, async (octokit, candidate) => {
