@@ -190,6 +190,25 @@ async function read(b, config, deps) {
   return out;
 }
 
+async function createFile(b, config, deps) {
+  const p = createPayload(b);
+  validateAccess(p, config);
+  const size = Buffer.byteLength(p.content, "utf8");
+  if (size > config.maxFileBytes) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "file_too_large", max_file_bytes: config.maxFileBytes });
+  scanSecrets(p.content);
+  const key = `${p.repository_full_name}:${p.branch}:${p.path}`;
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  locks.add(key);
+  try {
+    const created = await deps.createFile(p, p.content, p.commit_message, config);
+    const reread = await deps.readFile(p, config);
+    if (reread.content !== p.content) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    return { status: "CREATE_PASS", repository_full_name: p.repository_full_name, branch: p.branch, path: p.path, file_sha_after: reread.sha || created.file_sha_after, commit_sha: created.commit_sha, size, reread_verified: true };
+  } finally {
+    locks.delete(key);
+  }
+}
+
 export function createRequestHandler(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const deps = { readFile: options.readFile || readFileFromGitHub, updateFile: options.updateFile || updateFileOnGitHub };
