@@ -94,7 +94,7 @@ function tokenDiag(config) {
 }
 
 async function health(config) {
-  const out = { status: "ok", service: "github-add", version: "0.2.3", github_token_runtime: tokenDiag(config) };
+  const out = { status: "ok", service: "github-add", version: "0.2.4", github_token_runtime: tokenDiag(config) };
   try {
     const probe = await readFileFromGitHub({
       repository_full_name: "n0namer/content-generator",
