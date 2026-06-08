@@ -334,6 +334,36 @@ async function handleApply(rawPayload, config, deps) {
   }
 }
 
+async function handleCreate(rawPayload, config, deps) {
+  const payload = validateCreatePayload(rawPayload);
+  validateAccess(payload, config);
+  const size = Buffer.byteLength(payload.content, "utf8");
+  if (size > config.maxFileBytes) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "file_too_large", max_file_bytes: config.maxFileBytes });
+  scanSecrets(payload.content);
+
+  const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  locks.add(key);
+  try {
+    const create = await deps.createFile(payload, payload.content, payload.commit_message, config);
+    const reread = await deps.readFile(payload, config);
+    if (reread.content !== payload.content) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    return {
+      status: "CREATE_PASS",
+      repository_full_name: payload.repository_full_name,
+      branch: payload.branch,
+      path: payload.path,
+      file_sha_after: reread.sha || create.file_sha_after,
+      commit_sha: create.commit_sha,
+      size,
+      reread_verified: true,
+      evidence: { repo_allowed: true, branch_allowed: true, path_allowed: true, protected_path_blocked: false, secret_scan_pass: true, reread_verified: true },
+    };
+  } finally {
+    locks.delete(key);
+  }
+}
+
 export function createRequestHandler(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const deps = {
