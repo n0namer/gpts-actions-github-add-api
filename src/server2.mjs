@@ -70,6 +70,17 @@ function payload(b) {
   };
 }
 
+function createPayload(b) {
+  if (typeof b.content !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "content is required" });
+  return {
+    repository_full_name: reqstr(b.repository_full_name, "repository_full_name"),
+    branch: reqstr(b.branch, "branch"),
+    path: reqstr(b.path, "path"),
+    content: b.content,
+    commit_message: reqstr(b.commit_message, "commit_message"),
+  };
+}
+
 function tokenDiag(config) {
   const token = String(config.githubToken || "");
   const candidates = Array.isArray(config.githubTokenCandidates) ? config.githubTokenCandidates : [];
