@@ -120,6 +120,17 @@ export function openApiDocument() {
             version: { type: "string", examples: ["0.1.0"] },
           },
         },
+        CreateFileRequest: {
+          type: "object",
+          required: ["repository_full_name", "branch", "path", "content", "commit_message"],
+          properties: {
+            repository_full_name: { type: "string", examples: ["n0namer/GitHub-add"] },
+            branch: { type: "string", examples: ["main"] },
+            path: { type: "string", examples: ["docs/new-file.md"] },
+            content: { type: "string" },
+            commit_message: { type: "string" },
+          },
+        },
         PatchRequest: {
           type: "object",
           required: ["repository_full_name", "branch", "path", "expected_sha", "operation"],
