@@ -6,6 +6,7 @@ import { applyOperation, countChangedLines, createDiffPreview, sha256, createLin
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
 import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
+import { commands, VERSION, validateCommands } from "./commands/index.mjs";
 
 const previews = new Map();
 const locks = new Set();
@@ -94,7 +95,7 @@ function tokenDiag(config) {
 }
 
 async function health(config) {
-  const out = { status: "ok", service: "github-add", version: "0.2.4", github_token_runtime: tokenDiag(config) };
+  const out = { status: "ok", service: "github-add", version: VERSION, github_token_runtime: tokenDiag(config) };
   try {
     const probe = await readFileFromGitHub({
       repository_full_name: "n0namer/content-generator",
@@ -209,18 +210,36 @@ async function createFile(b, config, deps) {
   }
 }
 
+function findCommand(method, path) {
+  return commands.find((command) => command.method === method && command.path === path);
+}
+
+const handlerByOperationId = {
+  githubAddHealth: async (_payload, config) => health(config),
+  githubReadFile: read,
+  githubCreateFile: createFile,
+  githubPatchPreview: preview,
+  githubPatchApply: apply,
+};
+
+async function dispatchCommand(command, req, config, deps) {
+  if (command.auth === "bearer") bearer(req, config);
+  const payload = command.method === "GET" ? undefined : await body(req);
+  const handler = handlerByOperationId[command.operationId];
+  if (!handler) throw new GitHubAddError(500, { status: "COMMAND_HANDLER_MISSING", operationId: command.operationId });
+  return handler(payload, config, deps);
+}
+
 export function createRequestHandler(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const deps = { readFile: options.readFile || readFileFromGitHub, updateFile: options.updateFile || updateFileOnGitHub, createFile: options.createFile || createFileOnGitHub };
+  validateCommands(commands);
   return async (req, res) => {
     try {
       const url = new URL(req.url || "/", "http://localhost");
-      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, await health(config));
       if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
-      if (req.method === "POST" && url.pathname === "/file/read") { bearer(req, config); return send(res, 200, await read(await body(req), config, deps)); }
-      if (req.method === "POST" && url.pathname === "/file/create") { bearer(req, config); return send(res, 200, await createFile(await body(req), config, deps)); }
-      if (req.method === "POST" && url.pathname === "/patch/preview") { bearer(req, config); return send(res, 200, await preview(await body(req), config, deps)); }
-      if (req.method === "POST" && url.pathname === "/patch/apply") { bearer(req, config); return send(res, 200, await apply(await body(req), config, deps)); }
+      const command = findCommand(req.method, url.pathname);
+      if (command) return send(res, 200, await dispatchCommand(command, req, config, deps));
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("not found");
     } catch (e) {
@@ -233,7 +252,7 @@ export function createRequestHandler(options = {}) {
 export function startServer(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const server = createServer(createRequestHandler({ ...options, config }));
-  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port, version: "0.2.4" })));
+  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port, version: VERSION })));
   return server;
 }
 
