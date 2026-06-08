@@ -210,6 +210,26 @@ async function createFile(b, config, deps) {
   }
 }
 
+function findCommand(method, path) {
+  return commands.find((command) => command.method === method && command.path === path);
+}
+
+const handlerByOperationId = {
+  githubAddHealth: async (_payload, config) => health(config),
+  githubReadFile: read,
+  githubCreateFile: createFile,
+  githubPatchPreview: preview,
+  githubPatchApply: apply,
+};
+
+async function dispatchCommand(command, req, config, deps) {
+  if (command.auth === "bearer") bearer(req, config);
+  const payload = command.method === "GET" ? undefined : await body(req);
+  const handler = handlerByOperationId[command.operationId];
+  if (!handler) throw new GitHubAddError(500, { status: "COMMAND_HANDLER_MISSING", operationId: command.operationId });
+  return handler(payload, config, deps);
+}
+
 export function createRequestHandler(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const deps = { readFile: options.readFile || readFileFromGitHub, updateFile: options.updateFile || updateFileOnGitHub, createFile: options.createFile || createFileOnGitHub };
