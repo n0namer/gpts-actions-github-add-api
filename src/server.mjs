@@ -41,7 +41,7 @@ async function healthPayload(config) {
   const payload = {
     status: "ok",
     service: "github-add",
-    version: "0.2.1",
+    version: "0.2.4",
     github_token_runtime: tokenRuntimeDiagnostics(config),
   };
 
