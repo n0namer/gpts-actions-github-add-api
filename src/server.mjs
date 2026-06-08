@@ -14,7 +14,7 @@ export { GitHubAddError } from "./errors.mjs";
 export { loadConfig } from "./config.mjs";
 export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
 export { scanSecrets, validateAccess } from "./safety.mjs";
-export { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+export { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
