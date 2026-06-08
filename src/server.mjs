@@ -296,7 +296,7 @@ async function handleApply(rawPayload, config, deps) {
   requirePreview(previewPatchId, payload, config.requirePreview);
 
   const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
-  if (locks.has(key))) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
   locks.add(key);
   try {
     const outcome = await buildOutcome(payload, config, deps);
