@@ -203,6 +203,18 @@ function validatePayload(payload) {
   };
 }
 
+function validateCreatePayload(payload) {
+  if (!payload || typeof payload !== "object") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "payload is required" });
+  if (typeof payload.content !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "content is required" });
+  return {
+    repository_full_name: requireString(payload.repository_full_name, "repository_full_name"),
+    branch: requireString(payload.branch, "branch"),
+    path: requireString(payload.path, "path"),
+    content: payload.content,
+    commit_message: requireString(payload.commit_message, "commit_message"),
+  };
+}
+
 async function buildOutcome(payload, config, deps) {
   validateAccess(payload, config);
   const file = await deps.readFile(payload, config);
