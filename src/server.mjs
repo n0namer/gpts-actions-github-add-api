@@ -7,18 +7,64 @@ import {
   replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView,
 } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
-import { readFileFromGitHub, updateFileOnGitHub } from "./github.mjs";
+import { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 export { GitHubAddError } from "./errors.mjs";
 export { loadConfig } from "./config.mjs";
 export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
 export { scanSecrets, validateAccess } from "./safety.mjs";
-export { readFileFromGitHub, updateFileOnGitHub } from "./github.mjs";
+export { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
 const locks = new Set();
+
+function tokenRuntimeDiagnostics(config) {
+  const candidates = Array.isArray(config.githubTokenCandidates) ? config.githubTokenCandidates : [];
+  return {
+    token_env_names_configured: candidates.map((candidate) => candidate.name),
+    selected_token_env_name: config.githubTokenEnvName || "",
+    selected_token_present: Boolean(config.githubToken),
+    selected_token_length: String(config.githubToken || "").length,
+    selected_token_prefix: String(config.githubToken || "").startsWith("github_pat_")
+      ? "github_pat"
+      : String(config.githubToken || "").startsWith("ghp_")
+        ? "ghp"
+        : String(config.githubToken || "").length > 0
+          ? "other"
+          : "none",
+  };
+}
+
+async function healthPayload(config) {
+  const payload = {
+    status: "ok",
+    service: "github-add",
+    version: "0.2.1",
+    github_token_runtime: tokenRuntimeDiagnostics(config),
+  };
+
+  try {
+    const auth = await checkGitHubAuth({ repository_full_name: "n0namer/content-generator" }, config);
+    payload.github_auth = {
+      status: auth.status,
+      token_env_name: auth.token_env_name,
+      repository_full_name: auth.repository_full_name,
+      repository_private: auth.repository_private,
+      repository_permissions: auth.repository_permissions,
+    };
+  } catch (error) {
+    payload.github_auth = {
+      status: "GITHUB_AUTH_FAILED",
+      message: error?.payload?.message || error?.message || "GitHub auth check failed",
+      tried_token_env_names: error?.payload?.tried_token_env_names,
+      github_status: error?.payload?.github_status || error?.status,
+    };
+  }
+
+  return payload;
+}
 
 function constantTimeEqual(a, b) {
   if (a.length !== b.length) {
@@ -197,7 +243,7 @@ function requirePreview(patchId, payload, required) {
   if (!required) return;
   if (!patchId) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "preview_patch_id is required when PATCH_REQUIRE_PREVIEW=true" });
   const preview = previews.get(patchId);
-  if (!preview || preview.expiresAt < Date.now() || preview.signature !== previewSignature(payload)) {
+  if (!preview || preview.expiresAt < date.now() || preview.signature !== previewSignature(payload)) {
     throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "preview_required_or_expired" });
   }
 }
@@ -238,7 +284,7 @@ async function handleApply(rawPayload, config, deps) {
   requirePreview(previewPatchId, payload, config.requirePreview);
 
   const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
-  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  if (locks.has(Key))) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
   locks.add(key);
   try {
     const outcome = await buildOutcome(payload, config, deps);
@@ -286,7 +332,7 @@ export function createRequestHandler(options = {}) {
   return async function requestHandler(req, res) {
     try {
       const url = new URL(req.url || "/", "http://localhost");
-      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { status: "ok", service: "github-add", version: "0.2.0" });
+      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, await healthPayload(config));
       if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
       if (req.method === "POST" && url.pathname === "/patch/preview") {
         requireBearer(req, config);
