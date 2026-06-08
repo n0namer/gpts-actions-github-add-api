@@ -64,8 +64,9 @@ test("validateAccess blocks disallowed protected paths", () => {
 });
 
 test("scanSecrets blocks obvious tokens", () => {
+  const fakeToken = "ghp_" + "123456789012345678901234567890123456";
   assert.throws(
-    () => scanSecrets("const token = 'ghp_123456789012345678901234567890123456';"),
+    () => scanSecrets(`const token = '${fakeToken}';`),
     (error) => error instanceof GitHubAddError && error.payload.reason === "secret_scan_failed",
   );
 });
