@@ -416,12 +416,15 @@ test("OpenAPI has flat PatchApplyRequest no allOf and new operations", async () 
     const doc = await res.json();
     assert.equal(doc.components.schemas.PatchApplyRequest.type, "object");
     assert.equal(!!doc.components.schemas.PatchApplyRequest.allOf, false);
+    assert.ok(doc.components.schemas.CreateFileRequest);
     assert.ok(doc.components.schemas.ReplaceExactOnceOperation);
     assert.ok(doc.components.schemas.ReplaceWithContextOperation);
     assert.ok(doc.components.schemas.ReplaceLineRangeOperation);
     assert.ok(doc.components.schemas.InsertAfterExactOnceOperation);
     assert.ok(doc.paths["/file/read"]);
     assert.equal(doc.paths["/file/read"].post.operationId, "githubReadFile");
+    assert.ok(doc.paths["/file/create"]);
+    assert.equal(doc.paths["/file/create"].post.operationId, "githubCreateFile");
   } finally { server.close(); }
 });
 
