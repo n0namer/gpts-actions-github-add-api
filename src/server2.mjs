@@ -4,7 +4,7 @@ import { GitHubAddError, normalizeError } from "./errors.mjs";
 import { loadConfig } from "./config.mjs";
 import { applyOperation, countChangedLines, createDiffPreview, sha256, createLineView } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
-import { readFileFromGitHub, updateFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
