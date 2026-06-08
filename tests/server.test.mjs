@@ -16,6 +16,9 @@ import {
   scanSecrets,
   validateAccess,
 } from "../src/server.mjs";
+import { createRequestHandler as createProductionRequestHandler } from "../src/server2.mjs";
+import { commands, validateCommands } from "../src/commands/index.mjs";
+import { openApiDocument } from "../src/openapi.mjs";
 
 const fixture = `# Fixture
 
