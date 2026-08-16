@@ -1,4 +1,5 @@
 # GitHub ADD
+<!-- action-acceptance-canary-2026-08-17 -->
 
 **GitHub ADD** = **GitHub Additional Commands**.
 
