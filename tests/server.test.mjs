@@ -491,9 +491,15 @@ test("OpenAPI has flat PatchApplyRequest no allOf and new operations", async () 
     assert.ok(doc.components.schemas.ReplaceLineRangeOperation);
     assert.ok(doc.components.schemas.InsertAfterExactOnceOperation);
     assert.ok(doc.paths["/file/read"]);
-    assert.equal(doc.paths["/file/read"].post.operationId, "githubReadFile");
+    assert.equal(doc.paths["/file/read"].post.operationId, "readFile");
     assert.ok(doc.paths["/file/create"]);
-    assert.equal(doc.paths["/file/create"].post.operationId, "githubCreateFile");
+    assert.equal(doc.paths["/file/create"].post.operationId, "createFile");
+    assert.ok(doc.paths["/pull-request/read"]);
+    assert.equal(doc.paths["/pull-request/read"].post.operationId, "readPullRequest");
+    assert.ok(doc.paths["/pull-request/ready"]);
+    assert.equal(doc.paths["/pull-request/ready"].post.operationId, "markPullRequestReady");
+    assert.ok(doc.paths["/pull-request/merge"]);
+    assert.equal(doc.paths["/pull-request/merge"].post.operationId, "mergePullRequest");
   } finally { server.close(); }
 });
 
