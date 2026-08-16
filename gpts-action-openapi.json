@@ -167,6 +167,117 @@
           }
         }
       }
+    },
+    "/pull-request/read": {
+      "post": {
+        "operationId": "githubReadPullRequest",
+        "summary": "Read pull request state and head SHA",
+        "security": [
+          {
+            "ActionBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PullRequestReadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pull request read successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Repository not allowed"
+          },
+          "404": {
+            "description": "Pull request not found"
+          }
+        }
+      }
+    },
+    "/pull-request/ready": {
+      "post": {
+        "operationId": "githubMarkPullRequestReady",
+        "summary": "Mark a draft pull request ready for review with head SHA guard",
+        "security": [
+          {
+            "ActionBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PullRequestReadyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pull request is ready for review and reread verified"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Repository not allowed"
+          },
+          "409": {
+            "description": "Pull request head SHA changed"
+          },
+          "422": {
+            "description": "Operation blocked"
+          }
+        }
+      }
+    },
+    "/pull-request/merge": {
+      "post": {
+        "operationId": "githubMergePullRequest",
+        "summary": "Merge a pull request with mandatory head SHA guard and reread verification",
+        "security": [
+          {
+            "ActionBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PullRequestMergeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Merge passed and reread verified"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Repository not allowed"
+          },
+          "409": {
+            "description": "Pull request changed or merge blocked"
+          },
+          "422": {
+            "description": "Pull request cannot be merged safely"
+          }
+        }
+      }
     }
   },
   "components": {
