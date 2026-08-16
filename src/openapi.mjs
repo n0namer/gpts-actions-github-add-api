@@ -42,7 +42,7 @@ export function openApiDocument() {
     paths: {
       "/health": {
         get: {
-          operationId: "githubAddHealth",
+          operationId: "addHealth",
           summary: "Health check",
           responses: {
             "200": jsonResponse("#/components/schemas/HealthResponse", "Service is healthy"),
