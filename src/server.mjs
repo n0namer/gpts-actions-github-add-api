@@ -457,6 +457,24 @@ export function createRequestHandler(options = {}) {
         requireBearer(req, config);
         return send(res, 200, await handleCreate(await readBody(req), config, deps));
       }
+      if (req.method === "POST" && url.pathname === "/pull-request/read") {
+        requireBearer(req, config);
+        const payload = validatePullRequestPayload(await readBody(req));
+        validateRepositoryAccess(payload.repository_full_name, config);
+        return send(res, 200, await deps.readPullRequest(payload, config));
+      }
+      if (req.method === "POST" && url.pathname === "/pull-request/ready") {
+        requireBearer(req, config);
+        const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true });
+        validateRepositoryAccess(payload.repository_full_name, config);
+        return send(res, 200, await deps.markPullRequestReady(payload, config));
+      }
+      if (req.method === "POST" && url.pathname === "/pull-request/merge") {
+        requireBearer(req, config);
+        const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true });
+        validateRepositoryAccess(payload.repository_full_name, config);
+        return send(res, 200, await deps.mergePullRequest(payload, config));
+      }
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("not found");
