@@ -138,6 +138,143 @@ export async function createFileOnGitHub(payload, content, message, config) {
   }
 }
 
+function normalizePullNumber(value) {
+  const pullNumber = Number(value);
+  if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "pull_number must be a positive integer" });
+  }
+  return pullNumber;
+}
+
+function pullRequestSnapshot(data) {
+  return {
+    pull_number: data.number,
+    state: data.state,
+    draft: Boolean(data.draft),
+    merged: Boolean(data.merged),
+    mergeable: data.mergeable,
+    mergeable_state: data.mergeable_state,
+    head_ref: data.head?.ref,
+    head_sha: data.head?.sha,
+    base_ref: data.base?.ref,
+  };
+}
+
+function translatePullRequestError(error, pullNumber) {
+  if (error instanceof GitHubAddError) throw error;
+  const githubStatus = error?.status;
+  const message = error?.response?.data?.message || error?.message || "GitHub pull request operation failed";
+  if (githubStatus === 404) {
+    throw new GitHubAddError(404, { status: "PULL_REQUEST_NOT_FOUND", pull_number: pullNumber, message });
+  }
+  if (githubStatus === 401 || githubStatus === 403) {
+    throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub authentication failed", github_status: githubStatus });
+  }
+  if (githubStatus === 405 || githubStatus === 409 || githubStatus === 422) {
+    throw new GitHubAddError(githubStatus, { status: "PULL_REQUEST_OPERATION_BLOCKED", pull_number: pullNumber, github_status: githubStatus, message });
+  }
+  throw error;
+}
+
+export async function readPullRequestFromGitHub(payload, config) {
+  const { owner, repo } = parseRepository(payload.repository_full_name);
+  const pullNumber = normalizePullNumber(payload.pull_number);
+  try {
+    const response = await withGitHubAuth(config, (octokit) =>
+      octokit.pulls.get({ owner, repo, pull_number: pullNumber })
+    );
+    return pullRequestSnapshot(response.data);
+  } catch (error) {
+    translatePullRequestError(error, pullNumber);
+  }
+}
+
+export async function markPullRequestReadyForReviewOnGitHub(payload, config) {
+  const { owner, repo } = parseRepository(payload.repository_full_name);
+  const pullNumber = normalizePullNumber(payload.pull_number);
+  try {
+    return await withGitHubAuth(config, async (octokit) => {
+      const beforeResponse = await octokit.pulls.get({ owner, repo, pull_number: pullNumber });
+      const before = pullRequestSnapshot(beforeResponse.data);
+      if (payload.expected_head_sha && before.head_sha !== payload.expected_head_sha) {
+        throw new GitHubAddError(409, { status: "PULL_REQUEST_CHANGED", expected_head_sha: payload.expected_head_sha, actual_head_sha: before.head_sha });
+      }
+      if (!before.draft) {
+        return { status: "PR_READY_PASS", changed: false, ...before, reread_verified: true };
+      }
+
+      await octokit.graphql(
+        `mutation($pullRequestId: ID!) {
+          markPullRequestReadyForReview(input: { pullRequestId: $pullRequestId }) {
+            pullRequest { id number isDraft state }
+          }
+        }`,
+        { pullRequestId: beforeResponse.data.node_id },
+      );
+
+      const afterResponse = await octokit.pulls.get({ owner, repo, pull_number: pullNumber });
+      const after = pullRequestSnapshot(afterResponse.data);
+      if (after.draft) {
+        throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "ready-for-review reread verification failed" });
+      }
+      return { status: "PR_READY_PASS", changed: true, ...after, reread_verified: true };
+    });
+  } catch (error) {
+    translatePullRequestError(error, pullNumber);
+  }
+}
+
+export async function mergePullRequestOnGitHub(payload, config) {
+  const { owner, repo } = parseRepository(payload.repository_full_name);
+  const pullNumber = normalizePullNumber(payload.pull_number);
+  try {
+    return await withGitHubAuth(config, async (octokit) => {
+      const beforeResponse = await octokit.pulls.get({ owner, repo, pull_number: pullNumber });
+      const before = pullRequestSnapshot(beforeResponse.data);
+      if (before.head_sha !== payload.expected_head_sha) {
+        throw new GitHubAddError(409, { status: "PULL_REQUEST_CHANGED", expected_head_sha: payload.expected_head_sha, actual_head_sha: before.head_sha });
+      }
+      if (before.draft) {
+        throw new GitHubAddError(422, { status: "PULL_REQUEST_OPERATION_BLOCKED", reason: "pull_request_is_draft", pull_number: pullNumber });
+      }
+      if (before.merged) {
+        return { status: "MERGE_PASS", changed: false, ...before, reread_verified: true };
+      }
+      if (before.state !== "open") {
+        throw new GitHubAddError(422, { status: "PULL_REQUEST_OPERATION_BLOCKED", reason: "pull_request_not_open", pull_number: pullNumber });
+      }
+
+      const mergeResponse = await octokit.pulls.merge({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        sha: payload.expected_head_sha,
+        merge_method: payload.merge_method || "merge",
+        ...(payload.commit_title ? { commit_title: payload.commit_title } : {}),
+        ...(payload.commit_message ? { commit_message: payload.commit_message } : {}),
+      });
+      if (!mergeResponse.data.merged) {
+        throw new GitHubAddError(409, { status: "PULL_REQUEST_OPERATION_BLOCKED", pull_number: pullNumber, message: mergeResponse.data.message || "GitHub did not merge pull request" });
+      }
+
+      const afterResponse = await octokit.pulls.get({ owner, repo, pull_number: pullNumber });
+      const after = pullRequestSnapshot(afterResponse.data);
+      if (!after.merged) {
+        throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "merge reread verification failed" });
+      }
+      return {
+        status: "MERGE_PASS",
+        changed: true,
+        ...after,
+        merge_commit_sha: mergeResponse.data.sha,
+        reread_verified: true,
+      };
+    });
+  } catch (error) {
+    translatePullRequestError(error, pullNumber);
+  }
+}
+
 export async function checkGitHubAuth(payload, config) {
   const repositoryFullName = payload?.repository_full_name;
   return withGitHubAuth(config, async (octokit, candidate) => {
