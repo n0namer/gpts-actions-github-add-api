@@ -85,7 +85,7 @@ export function openApiDocument() {
       },
       "/patch/preview": {
         post: {
-          operationId: "githubPatchPreview",
+          operationId: "patchPreview",
           summary: "Preview a safe marker-based or text-based patch without committing",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchRequest" } } } },
