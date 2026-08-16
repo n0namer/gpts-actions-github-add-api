@@ -1,16 +1,16 @@
 {
-  "name": "github-add",
-  "version": "0.1.0",
+  "name": "github-file-patch-api",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Small GitHub Additional Commands service for safe marker-based patch preview/apply.",
+  "description": "Safe GitHub file read/create and precise patch preview/apply service.",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node src/server2.mjs",
+    "start": "node src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server2.mjs && node --test tests/*.test.mjs"
+    "check": "node --check src/server.mjs && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@octokit/rest": "^21.1.1",
