@@ -94,7 +94,7 @@ export function openApiDocument() {
       },
       "/patch/apply": {
         post: {
-          operationId: "githubPatchApply",
+          operationId: "patchApply",
           summary: "Apply a previously previewed patch and commit it",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchApplyRequest" } } } },
