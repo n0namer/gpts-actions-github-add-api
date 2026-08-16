@@ -193,6 +193,75 @@ test("auth: health check does NOT require Bearer", async () => {
   } finally { server.close(); }
 });
 
+test("pull request Action routes use repo guard, expected head SHA, and injected GitHub operations", async () => {
+  const expectedHead = "head-sha-123";
+  const config = {
+    actionBearerToken: "correct-token",
+    actionRequireBearer: true,
+    allowedRepos: ["n0namer/GitHub-add"],
+    allowedBranches: [],
+    allowedPathPrefixes: [],
+    protectedPathPrefixes: [],
+    blockProtectedPaths: true,
+    maxFileBytes: 200000,
+    maxChangedLines: 300,
+    requirePreview: true,
+  };
+  const handler = createRequestHandler({
+    config,
+    readPullRequest: async (payload) => ({
+      status: "PR_READ_PASS",
+      pull_number: payload.pull_number,
+      state: "open",
+      draft: true,
+      merged: false,
+      head_sha: expectedHead,
+      head_ref: "feature",
+      base_ref: "main",
+    }),
+    markPullRequestReady: async (payload) => {
+      assert.equal(payload.expected_head_sha, expectedHead);
+      return { status: "PR_READY_PASS", pull_number: payload.pull_number, draft: false, head_sha: expectedHead, reread_verified: true };
+    },
+    mergePullRequest: async (payload) => {
+      assert.equal(payload.expected_head_sha, expectedHead);
+      assert.equal(payload.merge_method, "merge");
+      return { status: "MERGE_PASS", pull_number: payload.pull_number, merged: true, head_sha: expectedHead, merge_commit_sha: "merge-sha", reread_verified: true };
+    },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const headers = { "content-type": "application/json", authorization: "Bearer correct-token" };
+
+  try {
+    const read = await fetch(`${base}/pull-request/read`, { method: "POST", headers, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", pull_number: 3 }) });
+    assert.equal(read.status, 200);
+    const readBody = await read.json();
+    assert.equal(readBody.head_sha, expectedHead);
+    assert.equal(readBody.draft, true);
+
+    const missingGuard = await fetch(`${base}/pull-request/ready`, { method: "POST", headers, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", pull_number: 3 }) });
+    assert.equal(missingGuard.status, 400);
+
+    const ready = await fetch(`${base}/pull-request/ready`, { method: "POST", headers, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", pull_number: 3, expected_head_sha: expectedHead }) });
+    assert.equal(ready.status, 200);
+    const readyBody = await ready.json();
+    assert.equal(readyBody.status, "PR_READY_PASS");
+    assert.equal(readyBody.reread_verified, true);
+
+    const merge = await fetch(`${base}/pull-request/merge`, { method: "POST", headers, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", pull_number: 3, expected_head_sha: expectedHead, merge_method: "merge" }) });
+    assert.equal(merge.status, 200);
+    const mergeBody = await merge.json();
+    assert.equal(mergeBody.status, "MERGE_PASS");
+    assert.equal(mergeBody.merge_commit_sha, "merge-sha");
+    assert.equal(mergeBody.reread_verified, true);
+
+    const blockedRepo = await fetch(`${base}/pull-request/read`, { method: "POST", headers, body: JSON.stringify({ repository_full_name: "other/repo", pull_number: 3 }) });
+    assert.equal(blockedRepo.status, 403);
+  } finally { server.close(); }
+});
+
 /* ──── New operation unit tests ──── */
 
 test("replaceExactOnce replaces unique old_text", () => {
