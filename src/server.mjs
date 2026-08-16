@@ -7,7 +7,10 @@ import {
   replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView,
 } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
-import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+import {
+  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
+  readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
+} from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 export { GitHubAddError } from "./errors.mjs";
