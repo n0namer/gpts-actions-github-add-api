@@ -487,7 +487,8 @@
           "path",
           "expected_sha",
           "operation",
-          "commit_message"
+          "commit_message",
+          "preview_patch_id"
         ],
         "properties": {
           "repository_full_name": {
