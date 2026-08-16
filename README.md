@@ -39,7 +39,7 @@ read file → apply patch in memory → preview diff → apply through GitHub AP
 
 ## MVP decision
 
-Use the simplest architecture.
+Use the simplest architecture. [Action acceptance canary]
 
 - Separate Railway project/service.
 - Use existing GitHub token in MVP.
