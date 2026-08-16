@@ -132,7 +132,7 @@
     },
     "/patch/apply": {
       "post": {
-        "operationId": "githubPatchApply",
+        "operationId": "patchApply",
         "summary": "Apply a previously previewed patch and commit it",
         "security": [
           {
