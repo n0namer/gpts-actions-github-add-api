@@ -405,6 +405,9 @@ export function createRequestHandler(options = {}) {
     readFile: options.readFile || readFileFromGitHub,
     updateFile: options.updateFile || updateFileOnGitHub,
     createFile: options.createFile || createFileOnGitHub,
+    readPullRequest: options.readPullRequest || readPullRequestFromGitHub,
+    markPullRequestReady: options.markPullRequestReady || markPullRequestReadyForReviewOnGitHub,
+    mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
   };
 
   return async function requestHandler(req, res) {
