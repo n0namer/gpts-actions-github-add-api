@@ -40,8 +40,8 @@ function tokenRuntimeDiagnostics(config) {
 async function healthPayload(config) {
   const payload = {
     status: "ok",
-    service: "github-add",
-    version: "0.2.4",
+    service: "github-file-patch-api",
+    version: "0.3.0",
     github_token_runtime: tokenRuntimeDiagnostics(config),
   };
 
@@ -433,7 +433,7 @@ export function startServer(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const server = createServer(createRequestHandler({ ...options, config }));
   server.listen(config.port, () => {
-    console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port }));
+    console.log(JSON.stringify({ level: "info", service: "github-file-patch-api", event: "listen", port: config.port }));
   });
   return server;
 }
