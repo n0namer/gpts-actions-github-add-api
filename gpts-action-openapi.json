@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "GitHub ADD API",
-    "version": "0.2.1",
-    "description": "Safe marker-based and text-based patch preview/apply service for GPTS."
+    "title": "GitHub File Patch API",
+    "version": "0.3.0",
+    "description": "Safe GitHub file read and precise patch preview/apply service for GPTS, with guarded pull request read, ready-for-review, and merge operations."
   },
   "servers": [
     {
