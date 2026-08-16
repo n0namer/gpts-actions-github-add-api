@@ -103,7 +103,7 @@ export function openApiDocument() {
       },
       "/pull-request/read": {
         post: {
-          operationId: "githubReadPullRequest",
+          operationId: "readPullRequest",
           summary: "Read pull request state and head SHA",
           security: [{ ActionBearerAuth: [] }],
           requestBody: {
