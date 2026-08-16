@@ -1,7 +1,7 @@
 {
   "name": "github-file-patch-api",
   "version": "0.3.0",
-  "private": true ,
+  "private": true,
   "type": "module",
   "description": "Safe GitHub file read/create and precise patch preview/apply service.",
   "engines": {
