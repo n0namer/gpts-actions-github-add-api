@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { GitHubAddError } from "./errors.mjs";
+import { validateContentForPath } from "./validation.mjs";
 
 function parseRepository(fullName) {
   const [owner, repo, extra] = String(fullName || "").split("/");
@@ -62,8 +63,10 @@ export async function readFileFromGitHub(payload, config) {
     );
     const data = response.data;
     if (Array.isArray(data) || data.type !== "file" || typeof data.content !== "string") throw new Error("not-file");
+    const content = Buffer.from(data.content, data.encoding === "base64" ? "base64" : "utf8").toString("utf8");
+    if (payload.validate_content === true) validateContentForPath(payload.path, content);
     return {
-      content: Buffer.from(data.content, data.encoding === "base64" ? "base64" : "utf8").toString("utf8"),
+      content,
       sha: data.sha,
       size: data.size,
     };
@@ -75,7 +78,18 @@ export async function readFileFromGitHub(payload, config) {
   }
 }
 
+async function verifyCommittedContent(payload, expectedContent, config) {
+  let reread = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    reread = await readFileFromGitHub({ ...payload, validate_content: true }, config);
+    if (reread.content === expectedContent) return reread;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "GitHub readback verification failed" });
+}
+
 export async function updateFileOnGitHub(payload, newContent, sha, message, config) {
+  validateContentForPath(payload.path, newContent);
   const { owner, repo } = parseRepository(payload.repository_full_name);
   const response = await withGitHubAuth(config, (octokit) =>
     octokit.repos.createOrUpdateFileContents({
@@ -88,13 +102,16 @@ export async function updateFileOnGitHub(payload, newContent, sha, message, conf
       content: Buffer.from(newContent, "utf8").toString("base64"),
     })
   );
+  const reread = await verifyCommittedContent(payload, newContent, config);
   return {
     commit_sha: response.data.commit?.sha,
-    file_sha_after: response.data.content?.sha,
+    file_sha_after: reread.sha || response.data.content?.sha,
+    reread_validated: true,
   };
 }
 
 export async function createFileOnGitHub(payload, content, message, config) {
+  validateContentForPath(payload.path, content);
   const { owner, repo } = parseRepository(payload.repository_full_name);
   try {
     const response = await withGitHubAuth(config, (octokit) =>
@@ -107,9 +124,11 @@ export async function createFileOnGitHub(payload, content, message, config) {
         content: Buffer.from(content, "utf8").toString("base64"),
       })
     );
+    const reread = await verifyCommittedContent(payload, content, config);
     return {
       commit_sha: response.data.commit?.sha,
-      file_sha_after: response.data.content?.sha,
+      file_sha_after: reread.sha || response.data.content?.sha,
+      reread_validated: true,
     };
   } catch (error) {
     if (error?.status === 422) {
