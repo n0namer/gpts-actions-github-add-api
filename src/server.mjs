@@ -221,6 +221,35 @@ function validateCreatePayload(payload) {
   };
 }
 
+function validateRepositoryAccess(repositoryFullName, config) {
+  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(repositoryFullName)) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+  }
+}
+
+function validatePullRequestPayload(payload, options = {}) {
+  if (!payload || typeof payload !== "object") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "payload is required" });
+  const pullNumber = Number(payload.pull_number);
+  if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "pull_number must be a positive integer" });
+  }
+  const result = {
+    repository_full_name: requireString(payload.repository_full_name, "repository_full_name"),
+    pull_number: pullNumber,
+  };
+  if (options.requireExpectedHead) result.expected_head_sha = requireString(payload.expected_head_sha, "expected_head_sha");
+  else if (typeof payload.expected_head_sha === "string" && payload.expected_head_sha) result.expected_head_sha = payload.expected_head_sha;
+  if (payload.merge_method !== undefined) {
+    if (!["merge", "squash", "rebase"].includes(payload.merge_method)) {
+      throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "merge_method must be merge, squash, or rebase" });
+    }
+    result.merge_method = payload.merge_method;
+  }
+  if (typeof payload.commit_title === "string" && payload.commit_title) result.commit_title = payload.commit_title;
+  if (typeof payload.commit_message === "string" && payload.commit_message) result.commit_message = payload.commit_message;
+  return result;
+}
+
 async function buildOutcome(payload, config, deps) {
   validateAccess(payload, config);
   const file = await deps.readFile(payload, config);
