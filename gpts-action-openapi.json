@@ -316,6 +316,97 @@
           }
         }
       },
+      "PullRequestReadRequest": {
+        "type": "object",
+        "required": [
+          "repository_full_name",
+          "pull_number"
+        ],
+        "properties": {
+          "repository_full_name": {
+            "type": "string",
+            "examples": [
+              "n0namer/gpts-actions-github-add-api"
+            ]
+          },
+          "pull_number": {
+            "type": "integer",
+            "minimum": 1,
+            "examples": [
+              3
+            ]
+          }
+        }
+      },
+      "PullRequestReadyRequest": {
+        "type": "object",
+        "required": [
+          "repository_full_name",
+          "pull_number",
+          "expected_head_sha"
+        ],
+        "properties": {
+          "repository_full_name": {
+            "type": "string",
+            "examples": [
+              "n0namer/gpts-actions-github-add-api"
+            ]
+          },
+          "pull_number": {
+            "type": "integer",
+            "minimum": 1,
+            "examples": [
+              3
+            ]
+          },
+          "expected_head_sha": {
+            "type": "string",
+            "description": "Current pull request head commit SHA used as a concurrency guard."
+          }
+        }
+      },
+      "PullRequestMergeRequest": {
+        "type": "object",
+        "required": [
+          "repository_full_name",
+          "pull_number",
+          "expected_head_sha"
+        ],
+        "properties": {
+          "repository_full_name": {
+            "type": "string",
+            "examples": [
+              "n0namer/gpts-actions-github-add-api"
+            ]
+          },
+          "pull_number": {
+            "type": "integer",
+            "minimum": 1,
+            "examples": [
+              3
+            ]
+          },
+          "expected_head_sha": {
+            "type": "string",
+            "description": "Current pull request head commit SHA used as a mandatory merge concurrency guard."
+          },
+          "merge_method": {
+            "type": "string",
+            "enum": [
+              "merge",
+              "squash",
+              "rebase"
+            ],
+            "default": "merge"
+          },
+          "commit_title": {
+            "type": "string"
+          },
+          "commit_message": {
+            "type": "string"
+          }
+        }
+      },
       "PatchRequest": {
         "type": "object",
         "required": [
