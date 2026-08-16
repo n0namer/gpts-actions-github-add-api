@@ -119,7 +119,7 @@ export function openApiDocument() {
       },
       "/pull-request/ready": {
         post: {
-          operationId: "githubMarkPullRequestReady",
+          operationId: "markPullRequestReady",
           summary: "Mark a draft pull request ready for review with head SHA guard",
           security: [{ ActionBearerAuth: [] }],
           requestBody: {
