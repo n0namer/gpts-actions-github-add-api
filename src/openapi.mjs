@@ -29,14 +29,14 @@ export function openApiDocument() {
   return {
     openapi: "3.1.0",
     info: {
-      title: "GitHub ADD API",
-      version: "0.2.4",
-      description: "Safe GitHub file read/create and marker-based or text-based patch preview/apply service for GPTS.",
+      title: "GitHub File Patch API",
+      version: "0.3.0",
+      description: "Safe GitHub file read/create and precise text patch preview/apply service with SHA guards, diff preview, and JSON validation for .json files.",
     },
     servers: [
       {
-        url: "https://github-add-api-production.up.railway.app",
-        description: "Railway production",
+        url: "https://github-patch.srv1904412.hstgr.cloud",
+        description: "Coolify production",
       },
     ],
     paths: {
@@ -80,7 +80,7 @@ export function openApiDocument() {
           summary: "Create a new file in GitHub and commit it",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/CreateFileRequest" } } } },
-          responses: { "200": { description: "File created successfully" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "409": { description: "File already exists" }, "422": { description: "Create cannot be applied safely" } },
+          responses: { "200": { description: "File created successfully" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "409": { description: "File already exists" }, "422": { description: "Create cannot be applied safely or JSON validation failed" } },
         },
       },
       "/patch/preview": {
@@ -89,7 +89,7 @@ export function openApiDocument() {
           summary: "Preview a safe marker-based or text-based patch without committing",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchRequest" } } } },
-          responses: { "200": { description: "Preview passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
+          responses: { "200": { description: "Preview passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely or JSON validation failed" } },
         },
       },
       "/patch/apply": {
@@ -98,7 +98,7 @@ export function openApiDocument() {
           summary: "Apply a previously previewed patch and commit it",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchApplyRequest" } } } },
-          responses: { "200": { description: "Apply passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
+          responses: { "200": { description: "Apply passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely or JSON validation failed" } },
         },
       },
     },
@@ -116,8 +116,8 @@ export function openApiDocument() {
           required: ["status", "service"],
           properties: {
             status: { type: "string", examples: ["ok"] },
-            service: { type: "string", examples: ["github-add"] },
-            version: { type: "string", examples: ["0.1.0"] },
+            service: { type: "string", examples: ["github-file-patch-api"] },
+            version: { type: "string", examples: ["0.3.0"] },
           },
         },
         CreateFileRequest: {
