@@ -305,14 +305,23 @@
           "service": {
             "type": "string",
             "examples": [
-              "github-add"
+              "github-file-patch-api"
             ]
           },
           "version": {
             "type": "string",
             "examples": [
-              "0.1.0"
+              "0.3.0"
             ]
+          },
+          "source_commit": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
