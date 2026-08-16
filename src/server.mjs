@@ -7,14 +7,20 @@ import {
   replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView,
 } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
-import { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+import {
+  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
+  readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
+} from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
 export { GitHubAddError } from "./errors.mjs";
 export { loadConfig } from "./config.mjs";
 export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
 export { scanSecrets, validateAccess } from "./safety.mjs";
-export { readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth } from "./github.mjs";
+export {
+  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
+  readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
+} from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
 const previews = new Map();
@@ -40,8 +46,10 @@ function tokenRuntimeDiagnostics(config) {
 async function healthPayload(config) {
   const payload = {
     status: "ok",
-    service: "github-add",
-    version: "0.2.4",
+    service: "github-file-patch-api",
+    version: "0.3.0",
+    source_commit: process.env.SOURCE_COMMIT || "",
+    capabilities: ["file_read", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge"],
     github_token_runtime: tokenRuntimeDiagnostics(config),
   };
 
@@ -215,6 +223,35 @@ function validateCreatePayload(payload) {
   };
 }
 
+function validateRepositoryAccess(repositoryFullName, config) {
+  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(repositoryFullName)) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+  }
+}
+
+function validatePullRequestPayload(payload, options = {}) {
+  if (!payload || typeof payload !== "object") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "payload is required" });
+  const pullNumber = Number(payload.pull_number);
+  if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "pull_number must be a positive integer" });
+  }
+  const result = {
+    repository_full_name: requireString(payload.repository_full_name, "repository_full_name"),
+    pull_number: pullNumber,
+  };
+  if (options.requireExpectedHead) result.expected_head_sha = requireString(payload.expected_head_sha, "expected_head_sha");
+  else if (typeof payload.expected_head_sha === "string" && payload.expected_head_sha) result.expected_head_sha = payload.expected_head_sha;
+  if (payload.merge_method !== undefined) {
+    if (!["merge", "squash", "rebase"].includes(payload.merge_method)) {
+      throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "merge_method must be merge, squash, or rebase" });
+    }
+    result.merge_method = payload.merge_method;
+  }
+  if (typeof payload.commit_title === "string" && payload.commit_title) result.commit_title = payload.commit_title;
+  if (typeof payload.commit_message === "string" && payload.commit_message) result.commit_message = payload.commit_message;
+  return result;
+}
+
 async function buildOutcome(payload, config, deps) {
   validateAccess(payload, config);
   const file = await deps.readFile(payload, config);
@@ -370,6 +407,9 @@ export function createRequestHandler(options = {}) {
     readFile: options.readFile || readFileFromGitHub,
     updateFile: options.updateFile || updateFileOnGitHub,
     createFile: options.createFile || createFileOnGitHub,
+    readPullRequest: options.readPullRequest || readPullRequestFromGitHub,
+    markPullRequestReady: options.markPullRequestReady || markPullRequestReadyForReviewOnGitHub,
+    mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
   };
 
   return async function requestHandler(req, res) {
@@ -419,6 +459,24 @@ export function createRequestHandler(options = {}) {
         requireBearer(req, config);
         return send(res, 200, await handleCreate(await readBody(req), config, deps));
       }
+      if (req.method === "POST" && url.pathname === "/pull-request/read") {
+        requireBearer(req, config);
+        const payload = validatePullRequestPayload(await readBody(req));
+        validateRepositoryAccess(payload.repository_full_name, config);
+        return send(res, 200, await deps.readPullRequest(payload, config));
+      }
+      if (req.method === "POST" && url.pathname === "/pull-request/ready") {
+        requireBearer(req, config);
+        const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true });
+        validateRepositoryAccess(payload.repository_full_name, config);
+        return send(res, 200, await deps.markPullRequestReady(payload, config));
+      }
+      if (req.method === "POST" && url.pathname === "/pull-request/merge") {
+        requireBearer(req, config);
+        const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true });
+        validateRepositoryAccess(payload.repository_full_name, config);
+        return send(res, 200, await deps.mergePullRequest(payload, config));
+      }
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("not found");
@@ -433,7 +491,7 @@ export function startServer(options = {}) {
   const config = options.config || loadConfig(options.env || process.env);
   const server = createServer(createRequestHandler({ ...options, config }));
   server.listen(config.port, () => {
-    console.log(JSON.stringify({ level: "info", service: "github-add", event: "listen", port: config.port }));
+    console.log(JSON.stringify({ level: "info", service: "github-file-patch-api", event: "listen", port: config.port }));
   });
   return server;
 }

@@ -2,7 +2,7 @@
 
 **GitHub ADD** = **GitHub Additional Commands**.
 
-This repository contains the architecture and implementation plan for a small standalone Railway service that gives GPTS extra safe GitHub commands that the normal GitHub connector/API does not provide directly.
+This repository contains the architecture and implementation plan for a small standalone service that gives GPTS extra safe GitHub commands that the normal GitHub connector/API does not provide directly.
 
 ## North Star
 

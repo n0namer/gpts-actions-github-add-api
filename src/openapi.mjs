@@ -29,20 +29,20 @@ export function openApiDocument() {
   return {
     openapi: "3.1.0",
     info: {
-      title: "GitHub ADD API",
-      version: "0.2.4",
-      description: "Safe GitHub file read/create and marker-based or text-based patch preview/apply service for GPTS.",
+      title: "GitHub File Patch API",
+      version: "0.3.0",
+      description: "Safe GitHub file read/create and precise text patch preview/apply service with SHA guards, diff preview, and JSON validation for .json files.",
     },
     servers: [
       {
-        url: "https://github-add-api-production.up.railway.app",
-        description: "Railway production",
+        url: "https://github-patch.srv1904412.hstgr.cloud",
+        description: "Coolify production",
       },
     ],
     paths: {
       "/health": {
         get: {
-          operationId: "githubAddHealth",
+          operationId: "addHealth",
           summary: "Health check",
           responses: {
             "200": jsonResponse("#/components/schemas/HealthResponse", "Service is healthy"),
@@ -51,7 +51,7 @@ export function openApiDocument() {
       },
       "/file/read": {
         post: {
-          operationId: "githubReadFile",
+          operationId: "readFile",
           summary: "Read a file from GitHub with line view",
           security: [{ ActionBearerAuth: [] }],
           requestBody: {
@@ -76,29 +76,84 @@ export function openApiDocument() {
       },
       "/file/create": {
         post: {
-          operationId: "githubCreateFile",
+          operationId: "createFile",
           summary: "Create a new file in GitHub and commit it",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/CreateFileRequest" } } } },
-          responses: { "200": { description: "File created successfully" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "409": { description: "File already exists" }, "422": { description: "Create cannot be applied safely" } },
+          responses: { "200": { description: "File created successfully" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "409": { description: "File already exists" }, "422": { description: "Create cannot be applied safely or JSON validation failed" } },
         },
       },
       "/patch/preview": {
         post: {
-          operationId: "githubPatchPreview",
+          operationId: "patchPreview",
           summary: "Preview a safe marker-based or text-based patch without committing",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchRequest" } } } },
-          responses: { "200": { description: "Preview passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
+          responses: { "200": { description: "Preview passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely or JSON validation failed" } },
         },
       },
       "/patch/apply": {
         post: {
-          operationId: "githubPatchApply",
+          operationId: "patchApply",
           summary: "Apply a previously previewed patch and commit it",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PatchApplyRequest" } } } },
-          responses: { "200": { description: "Apply passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely" } },
+          responses: { "200": { description: "Apply passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely or JSON validation failed" } },
+        },
+      },
+      "/pull-request/read": {
+        post: {
+          operationId: "readPullRequest",
+          summary: "Read pull request state and head SHA",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: {
+              type: "object",
+              required: ["repository_full_name", "pull_number"],
+              properties: { repository_full_name: { type: "string" }, pull_number: { type: "integer", minimum: 1 } },
+            } } },
+          },
+          responses: { "200": { description: "Pull request read successfully" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "404": { description: "Pull request not found" } },
+        },
+      },
+      "/pull-request/ready": {
+        post: {
+          operationId: "markPullRequestReady",
+          summary: "Mark a draft pull request ready for review with head SHA guard",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: {
+              type: "object",
+              required: ["repository_full_name", "pull_number", "expected_head_sha"],
+              properties: { repository_full_name: { type: "string" }, pull_number: { type: "integer", minimum: 1 }, expected_head_sha: { type: "string" } },
+            } } },
+          },
+          responses: { "200": { description: "Pull request is ready for review and reread verified" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "409": { description: "Pull request head SHA changed" }, "422": { description: "Operation blocked" } },
+        },
+      },
+      "/pull-request/merge": {
+        post: {
+          operationId: "mergePullRequest",
+          summary: "Merge a pull request with mandatory head SHA guard and reread verification",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: {
+              type: "object",
+              required: ["repository_full_name", "pull_number", "expected_head_sha"],
+              properties: {
+                repository_full_name: { type: "string" },
+                pull_number: { type: "integer", minimum: 1 },
+                expected_head_sha: { type: "string" },
+                merge_method: { type: "string", enum: ["merge", "squash", "rebase"], default: "merge" },
+                commit_title: { type: "string" },
+                commit_message: { type: "string" },
+              },
+            } } },
+          },
+          responses: { "200": { description: "Merge passed and reread verified" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "409": { description: "Pull request changed or merge blocked" }, "422": { description: "Pull request cannot be merged safely" } },
         },
       },
     },
@@ -116,8 +171,8 @@ export function openApiDocument() {
           required: ["status", "service"],
           properties: {
             status: { type: "string", examples: ["ok"] },
-            service: { type: "string", examples: ["github-add"] },
-            version: { type: "string", examples: ["0.1.0"] },
+            service: { type: "string", examples: ["github-file-patch-api"] },
+            version: { type: "string", examples: ["0.3.0"] },
           },
         },
         CreateFileRequest: {
