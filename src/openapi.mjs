@@ -51,7 +51,7 @@ export function openApiDocument() {
       },
       "/file/read": {
         post: {
-          operationId: "githubReadFile",
+          operationId: "readFile",
           summary: "Read a file from GitHub with line view",
           security: [{ ActionBearerAuth: [] }],
           requestBody: {
