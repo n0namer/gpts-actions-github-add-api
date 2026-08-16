@@ -101,6 +101,61 @@ export function openApiDocument() {
           responses: { "200": { description: "Apply passed" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "503": { description: "Bearer auth required but not configured" }, "409": { description: "Expected SHA mismatch" }, "422": { description: "Patch cannot be applied safely or JSON validation failed" } },
         },
       },
+      "/pull-request/read": {
+        post: {
+          operationId: "githubReadPullRequest",
+          summary: "Read pull request state and head SHA",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: {
+              type: "object",
+              required: ["repository_full_name", "pull_number"],
+              properties: { repository_full_name: { type: "string" }, pull_number: { type: "integer", minimum: 1 } },
+            } } },
+          },
+          responses: { "200": { description: "Pull request read successfully" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "404": { description: "Pull request not found" } },
+        },
+      },
+      "/pull-request/ready": {
+        post: {
+          operationId: "githubMarkPullRequestReady",
+          summary: "Mark a draft pull request ready for review with head SHA guard",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: {
+              type: "object",
+              required: ["repository_full_name", "pull_number", "expected_head_sha"],
+              properties: { repository_full_name: { type: "string" }, pull_number: { type: "integer", minimum: 1 }, expected_head_sha: { type: "string" } },
+            } } },
+          },
+          responses: { "200": { description: "Pull request is ready for review and reread verified" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "409": { description: "Pull request head SHA changed" }, "422": { description: "Operation blocked" } },
+        },
+      },
+      "/pull-request/merge": {
+        post: {
+          operationId: "githubMergePullRequest",
+          summary: "Merge a pull request with mandatory head SHA guard and reread verification",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: {
+              type: "object",
+              required: ["repository_full_name", "pull_number", "expected_head_sha"],
+              properties: {
+                repository_full_name: { type: "string" },
+                pull_number: { type: "integer", minimum: 1 },
+                expected_head_sha: { type: "string" },
+                merge_method: { type: "string", enum: ["merge", "squash", "rebase"], default: "merge" },
+                commit_title: { type: "string" },
+                commit_message: { type: "string" },
+              },
+            } } },
+          },
+          responses: { "200": { description: "Merge passed and reread verified" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "409": { description: "Pull request changed or merge blocked" }, "422": { description: "Pull request cannot be merged safely" } },
+        },
+      },
     },
     components: {
       securitySchemes: {
