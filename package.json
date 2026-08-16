@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Safe GitHub file read/create and precise patch preview/apply service. [runtime-smoke]",
+  "description": "Safe GitHub file read/create and precise patch preview/apply service.",
   "engines": {
     "node": ">=20"
   },
