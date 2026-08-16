@@ -8,7 +8,7 @@
   "servers": [
     {
       "url": "https://github-patch.srv1904412.hstgr.cloud",
-      "description": "Railway production"
+      "description": "Coolify production"
     }
   ],
   "paths": {
