@@ -76,7 +76,7 @@ export function openApiDocument() {
       },
       "/file/create": {
         post: {
-          operationId: "githubCreateFile",
+          operationId: "createFile",
           summary: "Create a new file in GitHub and commit it",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/CreateFileRequest" } } } },
