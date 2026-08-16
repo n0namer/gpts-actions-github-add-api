@@ -135,7 +135,7 @@ export function openApiDocument() {
       },
       "/pull-request/merge": {
         post: {
-          operationId: "githubMergePullRequest",
+          operationId: "mergePullRequest",
           summary: "Merge a pull request with mandatory head SHA guard and reread verification",
           security: [{ ActionBearerAuth: [] }],
           requestBody: {
