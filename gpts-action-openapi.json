@@ -94,7 +94,7 @@
     },
     "/patch/preview": {
       "post": {
-        "operationId": "githubPatchPreview",
+        "operationId": "patchPreview",
         "summary": "Preview a safe marker-based or text-based patch without committing",
         "security": [
           {
