@@ -29,7 +29,7 @@
 | 200 / `APPLY_PASS` | Patch committed and reread verified | Record `commit_sha` |
 | 400 / `BAD_REQUEST` | Request JSON or required fields are invalid | Fix payload schema |
 | 401 / `AUTH_FAILED` | Railway service lacks valid GitHub token | Verify `GITHUB_TOKEN` exists in Railway; do not print value |
-| 403 / `NOT_ALLOWED` | Repo, branch, or path is outside allowlist | Use allowed target or update policy deliberately |
+| 403 / `NOT_ALLOWED` | Path is unsafe or protected | Use a non-protected safe path |
 | 409 / `FILE_CHANGED` | `expected_sha` is stale | Reread file SHA, regenerate preview |
 | 422 / `PATCH_NOT_APPLICABLE` | Marker missing/duplicate, protected path, secret scan, or diff limit failed | Inspect `reason`, fix target or patch |
 | 423 / `WRITE_LOCKED` | Same repo/branch/path is already being written | Retry after current write completes |
