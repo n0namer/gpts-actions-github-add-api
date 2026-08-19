@@ -482,7 +482,7 @@ test("apply handles stale readFile with retry and succeeds", async () => {
   const patchedContent = "<OLD>\nNEW\n</OLD>";
   let callCount = 0;
   const handler = createRequestHandler({
-    config: { actionBearerToken: "test-token", actionRequireBearer: false, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    config: { actionBearerToken: "test-token", actionRequireBearer: false, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
     readFile: async (payload) => {
       callCount++;
       if (callCount === 1) {
