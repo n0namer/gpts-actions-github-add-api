@@ -191,7 +191,7 @@ test("auth: OpenAPI advertises Bearer for patch operations only", async () => {
     const res = await fetch(`${base}/openapi.json`);
     assert.equal(res.status, 200);
     const doc = await res.json();
-    assert.equal(doc.paths["/health"].get.security, undefined);
+    assert.deepEqual(doc.paths["/health"].get.security, []);
     assert.deepEqual(doc.paths["/patch/preview"].post.security, [{ ActionBearerAuth: [] }]);
     assert.deepEqual(doc.paths["/patch/apply"].post.security, [{ ActionBearerAuth: [] }]);
     assert.deepEqual(doc.paths["/file/read"].post.security, [{ ActionBearerAuth: [] }]);
