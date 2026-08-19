@@ -94,7 +94,7 @@
     },
     "/file/create": {
       "post": {
-        "operationId": "createFile",
+        "operationId": "githubCreateFile",
         "summary": "Create a new GitHub file only when the target path does not already exist",
         "security": [
           {
