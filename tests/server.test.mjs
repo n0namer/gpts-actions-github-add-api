@@ -543,7 +543,7 @@ test("runtime OpenAPI is exactly the static GPT Actions schema", async () => {
   } finally { server.close(); }
 });
 
-test("PR routes enforce repo and expected head guards", async () => {
+test("PR routes enforce expected head guards across repositories", async () => {
   let readCalls = 0, readyCalls = 0, mergeCalls = 0;
   const handler = createRequestHandler({
     config: { actionBearerToken: "x", actionRequireBearer: false, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: true },
