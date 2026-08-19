@@ -92,6 +92,47 @@
         }
       }
     },
+    "/file/create": {
+      "post": {
+        "operationId": "createFile",
+        "summary": "Create a new GitHub file only when the target path does not already exist",
+        "security": [
+          {
+            "ActionBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File created and reread verified"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "description": "Repository or branch not allowed"
+          },
+          "409": {
+            "description": "Target file already exists"
+          },
+          "422": {
+            "description": "Create blocked by validation, size, or secret scan"
+          },
+          "503": {
+            "description": "Bearer auth required but not configured"
+          }
+        }
+      }
+    },
     "/patch/preview": {
       "post": {
         "operationId": "patchPreview",
