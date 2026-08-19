@@ -6,7 +6,7 @@ import {
   applyOperation, countChangedLines, createDiffPreview, replaceBetweenMarkers, insertAfterMarker, sha256,
   replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView,
 } from "./patch.mjs";
-import { checkLimits, scanSecrets, validateAccess, validateRepositoryAccess } from "./safety.mjs";
+import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
 import { validateContentForPath } from "./validation.mjs";
 import {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
