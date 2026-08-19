@@ -88,9 +88,9 @@ function requireBearer(req, config) {
   if (config.actionRequireBearer && !token) {
     throw new GitHubAddError(503, { status: "AUTH_NOT_CONFIGURED", message: "Bearer token not configured on server" });
   }
-  if (!config.actionRequireBearer return;
+  if (!config.actionRequireBearer) return;
   const header = req.headers["authorization"] || req.headers["Authorization"] || "";
-  const match = header.match(/^Bearer\s+(.+)$oi);
+  const match = header.match(/^Bearer\s+(.+)$/i);
   if (!match) {
     throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "Missing or malformed Authorization header" });
   }
