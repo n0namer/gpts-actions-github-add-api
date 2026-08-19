@@ -1,13 +1,20 @@
 {
-  "name": "github-add-api",
+  "name": "github-file-patch-api",
   "version": "0.3.0",
-  "type": "module",
   "private": true,
-  "scripts": {
-    "start": "node src/server.mjs",
-    "test": "node --test"
-  },
+  "type": "module",
+  "description": "Safe GitHub file read/create and precise patch preview/apply service.",
   "engines": {
     "node": ">=20"
-  }
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/server.mjs && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.1.1",
+    "diff": "^7.0.0"
+  },
+  "devDependencies": {}
 }
