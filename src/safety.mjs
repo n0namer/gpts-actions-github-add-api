@@ -1,28 +1,6 @@
 import { GitHubAddError } from "./errors.mjs";
 
-function requireAllowlist(values, reason) {
-  if (!Array.isArray(values) || values.length === 0) {
-    throw new GitHubAddError(503, { status: "SECURITY_CONFIG_NOT_CONFIGURED", reason });
-  }
-}
-
-export function validateRepositoryAccess(repositoryFullName, config) {
-  requireAllowlist(config.allowedRepos, "repository_allowlist_not_configured");
-  if (!config.allowedRepos.includes(repositoryFullName)) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-  }
-}
-
 export function validateAccess(payload, config) {
-  validateRepositoryAccess(payload.repository_full_name, config);
-  requireAllowlist(config.allowedBranches, "branch_allowlist_not_configured");
-  requireAllowlist(config.allowedPathPrefixes, "path_allowlist_not_configured");
-  if (!config.allowedBranches.includes(payload.branch)) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "branch_not_allowed" });
-  }
-  if (!config.allowedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "path_prefix_not_allowed" });
-  }
   if (payload.path.includes("..") || payload.path.startsWith("/") || payload.path.includes("\\")) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "invalid_path" });
   }
