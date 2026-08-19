@@ -540,6 +540,46 @@ test("OpenAPI has flat PatchApplyRequest no allOf and new operations", async () 
   } finally { server.close(); }
 });
 
+test("runtime OpenAPI is exactly the static GPT Actions schema", async () => {
+  const { server, base } = await createAuthTestServer();
+  try {
+    const res = await fetch(`${base}/openapi.json`);
+    assert.equal(res.status, 200);
+    const runtime = await res.json();
+    const staticDoc = JSON.parse(await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8"));
+    assert.deepEqual(runtime, staticDoc);
+  } finally { server.close(); }
+});
+
+test("PR routes enforce repo and expected head guards", async () => {
+  let readCalls = 0, readyCalls = 0, mergeCalls = 0;
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "x", actionRequireBearer: false, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: true },
+    readPullRequest: async (p) => { readCalls++; return { pull_number: p.pull_number, state: "open", head_sha: "abc" }; },
+    markPullRequestReady: async (p) => { readyCalls++; return { status: "PR_READY_PASS", head_sha: p.expected_head_sha, reread_verified: true }; },
+    mergePullRequest: async (p) => { mergeCalls++; return { status: "MERGE_PASS", head_sha: p.expected_head_sha, reread_verified: true }; },
+  });
+  const server = createServer(handler); server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, body) => fetch(base + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  try {
+    assert.equal((await post("/pull-request/read", { repository_full_name: "n0namer/GitHub-add", pull_number: 1 })).status, 200);
+    assert.equal(readCalls, 1);
+    assert.equal((await post("/pull-request/read", { repository_full_name: "other/repo", pull_number: 1 })).status, 403);
+    assert.equal(readCalls, 1);
+    assert.equal((await post("/pull-request/ready", { repository_full_name: "n0namer/GitHub-add", pull_number: 1 })).status, 400);
+    assert.equal(readyCalls, 0);
+    assert.equal((await post("/pull-request/ready", { repository_full_name: "n0namer/GitHub-add", pull_number: 1, expected_head_sha: "abc" })).status, 200);
+    assert.equal(readyCalls, 1);
+    assert.equal((await post("/pull-request/merge", { repository_full_name: "n0namer/GitHub-add", pull_number: 1 })).status, 400);
+    assert.equal(mergeCalls, 0);
+    assert.equal((await post("/pull-request/merge", { repository_full_name: "n0namer/GitHub-add", pull_number: 1, expected_head_sha: "abc", merge_method: "bad" })).status, 400);
+    assert.equal(mergeCalls, 0);
+    assert.equal((await post("/pull-request/merge", { repository_full_name: "n0namer/GitHub-add", pull_number: 1, expected_head_sha: "abc", merge_method: "squash" })).status, 200);
+    assert.equal(mergeCalls, 1);
+  } finally { server.close(); }
+});
+
 /* ──── applyOperation dispatch tests ──── */
 
 test("applyOperation dispatches replace_exact_once", () => {
