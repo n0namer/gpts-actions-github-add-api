@@ -330,7 +330,7 @@ test("/file/create returns CREATE_PASS and rereads content", async () => {
   let sha = "";
   const createdContent = "# New file\n";
   const handler = createRequestHandler({
-    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
     readFile: async () => ({ content, sha, size: Buffer.byteLength(content) }),
     updateFile: async () => ({ commit_sha: "unused", file_sha_after: "unused" }),
     createFile: async (_payload, nextContent) => { content = nextContent; sha = "sha-created"; return { commit_sha: "commit-create", file_sha_after: sha }; },
