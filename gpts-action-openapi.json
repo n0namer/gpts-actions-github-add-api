@@ -211,7 +211,7 @@
     },
     "/pull-request/read": {
       "post": {
-        "operationId": "readPullRequest",
+        "operationId": "githubReadPullRequest",
         "summary": "Read pull request state and head SHA",
         "security": [
           {
