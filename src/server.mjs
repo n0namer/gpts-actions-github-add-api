@@ -266,3 +266,46 @@ async function handleCreate(rawPayload, config, deps) {
     return { status: "CREATE_PASS", repository_full_name: payload.repository_full_name, branch: payload.branch, path: payload.path, file_sha_after: reread.sha || create.file_sha_after, commit_sha: create.commit_sha, size, reread_verified: true, evidence: { repo_allowed: true, branch_allowed: true, path_allowed: true, protected_path_blocked: false, secret_scan_pass: true, reread_verified: true } };
   } finally { locks.delete(key); }
 }
+export function createRequestHandler(options = {}) {
+  const config = options.config || loadConfig(options.env || process.env);
+  const deps = {
+    readFile: options.readFile || readFileFromGitHub,
+    updateFile: options.updateFile || updateFileOnGitHub,
+    createFile: options.createFile || createFileOnGitHub,
+    readPullRequest: options.readPullRequest || readPullRequestFromGitHub,
+    markPullRequestReady: options.markPullRequestReady || markPullRequestReadyForReviewOnGitHub,
+    mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
+  };
+  return async function requestHandler(req, res) {
+    try {
+      const url = new URL(req.url || "/", "http://localhost");
+      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, await healthPayload(config));
+      if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
+      if (req.method === "POST" && url.pathname === "/patch/preview") { requireBearer(req, config); return send(res, 200, await handlePreview(validatePayload(await readBody(req)), config, deps)); }
+      if (req.method === "POST" && url.pathname === "/patch/apply") { requireBearer(req, config); return send(res, 200, await handleApply(await readBody(req), config, deps)); }
+      if (req.method === "POST" && url.pathname === "/file/read") {
+        requireBearer(req, config);
+        const body = await readBody(req);
+        const repo = requireString(body.repository_full_name, "repository_full_name"); const branch = requireString(body.branch, "branch"); const path = requireString(body.path, "path");
+        const readPayload = { repository_full_name: repo, branch, path }; validateAccess(readPayload, config); const file = await deps.readFile(readPayload, config); const lines = createLineView(file.content);
+        const result = { status: "READ_PASS", repository_full_name: repo, branch, path, file_sha: file.sha, sha: file.sha, size: file.size, line_count: lines.length, content: file.content, lines };
+        if (body.options?.fields) { const fields = new Set(body.options.fields); for (const k of Object.keys(result)) if (!fields.has(k)) delete result[k]; }
+        return send(res, 200, result);
+      }
+      if (req.method === "POST" && url.pathname === "/file/create") { requireBearer(req, config); return send(res, 200, await handleCreate(await readBody(req), config, deps)); }
+      if (req.method === "POST" && url.pathname === "/pull-request/read") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req)); validateRepositoryAccess(payload.repository_full_name, config); return send(res, 200, await deps.readPullRequest(payload, config)); }
+      if (req.method === "POST" && url.pathname === "/pull-request/ready") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true }); validateRepositoryAccess(payload.repository_full_name, config); return send(res, 200, await deps.markPullRequestReady(payload, config)); }
+      if (req.method === "POST" && url.pathname === "/pull-request/merge") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true }); validateRepositoryAccess(payload.repository_full_name, config); return send(res, 200, await deps.mergePullRequest(payload, config)); }
+      res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); return res.end("not found");
+    } catch (error) { const normalized = normalizeError(error); return send(res, normalized.httpStatus, normalized.payload); }
+  };
+}
+
+export function startServer(options = {}) {
+  const config = options.config || loadConfig(options.env || process.env);
+  const server = createServer(createRequestHandler({ ...options, config }));
+  server.listen(config.port, () => console.log(JSON.stringify({ level: "info", service: "github-file-patch-api", event: "listen", port: config.port })));
+  return server;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) startServer();
