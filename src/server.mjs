@@ -142,10 +142,6 @@ function validateCreatePayload(payload) {
   return { repository_full_name: requireString(payload.repository_full_name, "repository_full_name"), branch: requireString(payload.branch, "branch"), path: requireString(payload.path, "path"), content: payload.content, commit_message: requireString(payload.commit_message, "commit_message") };
 }
 
-function validateRepositoryAccess(repositoryFullName, config) {
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(repositoryFullName)) throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-}
-
 function validatePullRequestPayload(payload, options = {}) {
   if (!payload || typeof payload !== "object") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "payload is required" });
   const pullNumber = Number(payload.pull_number);
