@@ -216,6 +216,7 @@ async function handleCreate(rawPayload, config, deps) {
   const size = Buffer.byteLength(payload.content, "utf8");
   if (size > config.maxFileBytes) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "file_too_large", max_file_bytes: config.maxFileBytes });
   scanSecrets(payload.content);
+  validateContentForPath(payload.path, payload.content);
   const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
   if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
   locks.add(key);
