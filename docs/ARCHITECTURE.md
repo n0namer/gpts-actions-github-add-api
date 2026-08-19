@@ -107,9 +107,6 @@ For MVP, marker operations can be implemented directly and `jsdiff` used for dif
 
 Responsibilities:
 
-- repo allowlist;
-- branch allowlist;
-- path prefix allowlist;
 - protected path blocklist;
 - expected sha check;
 - marker uniqueness check;
