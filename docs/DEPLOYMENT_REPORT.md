@@ -18,9 +18,6 @@ REQUEST_ID: `GITHUB_ADD_MVP_001`
   - `insert_after_marker`.
 - Safety checks:
   - `expected_sha` required;
-  - repo allowlist;
-  - branch allowlist;
-  - path prefix allowlist;
   - protected path block;
   - max file bytes;
   - max changed lines;
