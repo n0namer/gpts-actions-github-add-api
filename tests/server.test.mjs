@@ -435,7 +435,7 @@ test("/file/create rejects invalid JSON before GitHub write", async () => {
 
 test("/file/create preserves already-exists conflict", async () => {
   const handler = createRequestHandler({
-    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
     readFile: async () => ({ content: "existing", sha: "existing-sha", size: 8 }),
     createFile: async () => { throw new GitHubAddError(409, { status: "FILE_ALREADY_EXISTS", reason: "file_already_exists" }); },
   });
