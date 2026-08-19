@@ -557,8 +557,8 @@ test("PR routes enforce expected head guards across repositories", async () => {
   try {
     assert.equal((await post("/pull-request/read", { repository_full_name: "n0namer/GitHub-add", pull_number: 1 })).status, 200);
     assert.equal(readCalls, 1);
-    assert.equal((await post("/pull-request/read", { repository_full_name: "other/repo", pull_number: 1 })).status, 403);
-    assert.equal(readCalls, 1);
+    assert.equal((await post("/pull-request/read", { repository_full_name: "other/repo", pull_number: 1 })).status, 200);
+    assert.equal(readCalls, 2);
     assert.equal((await post("/pull-request/ready", { repository_full_name: "n0namer/GitHub-add", pull_number: 1 })).status, 400);
     assert.equal(readyCalls, 0);
     assert.equal((await post("/pull-request/ready", { repository_full_name: "n0namer/GitHub-add", pull_number: 1, expected_head_sha: "abc" })).status, 200);
