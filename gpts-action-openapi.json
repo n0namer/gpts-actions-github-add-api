@@ -284,7 +284,7 @@
     },
     "/pull-request/merge": {
       "post": {
-        "operationId": "mergePullRequest",
+        "operationId": "githubMergePullRequest",
         "summary": "Merge a pull request with mandatory head SHA guard and reread verification",
         "security": [
           {
