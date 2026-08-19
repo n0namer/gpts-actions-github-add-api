@@ -1,20 +1,13 @@
 {
-  "name": "github-add",
-  "version": "0.1.0",
-  "private": true,
+  "name": "github-add-api",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Small GitHub Additional Commands service for safe marker-based patch preview/apply.",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test"
+  },
   "engines": {
     "node": ">=20"
-  },
-  "scripts": {
-    "start": "node src/server2.mjs",
-    "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server2.mjs && node --test tests/*.test.mjs"
-  },
-  "dependencies": {
-    "@octokit/rest": "^21.1.1",
-    "diff": "^7.0.0"
-  },
-  "devDependencies": {}
+  }
 }
