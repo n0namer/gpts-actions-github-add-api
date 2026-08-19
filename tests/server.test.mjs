@@ -456,7 +456,7 @@ test("preview and apply with replace_exact_once", async () => {
   let content = fixture;
   let sha = "sha-before";
   const handler = createRequestHandler({
-    config: { actionBearerToken: "test-token", actionRequireBearer: false, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: true },
+    config: { actionBearerToken: "test-token", actionRequireBearer: false, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: true },
     readFile: async () => ({ content, sha, size: Buffer.byteLength(content) }),
     updateFile: async (_p, nc) => { content = nc; sha = "sha-after"; return { commit_sha: "commit-exact", file_sha_after: sha }; },
   });
