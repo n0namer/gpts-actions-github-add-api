@@ -209,12 +209,12 @@ GitHub token missing/invalid.
 
 ### 403 NOT_ALLOWED
 
-Repo/branch/path is not allowed.
+Protected or unsafe path is not allowed.
 
 ```json
 {
   "status": "NOT_ALLOWED",
-  "reason": "repository_not_allowed"
+  "reason": "protected_path"
 }
 ```
 
