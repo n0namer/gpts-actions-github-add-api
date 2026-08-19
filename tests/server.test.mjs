@@ -207,6 +207,10 @@ test("auth: health check does NOT require Bearer", async () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.status, "ok");
+    assert.equal(body.version, "0.3.0");
+    assert.ok(body.capabilities.includes("file_create"));
+    assert.equal("github_token_runtime" in body, false);
+    assert.equal("github_auth" in body, false);
   } finally { server.close(); }
 });
 
