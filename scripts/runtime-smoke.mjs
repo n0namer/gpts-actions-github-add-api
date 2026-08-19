@@ -127,7 +127,7 @@ try {
     commit_message: "test: revert runtime smoke patch",
     preview_patch_id: revertPreview.patch_id,
   });
-  if (revertApply.status !== "APPLY_PAS" || !revertApply.reread_verified) {
+  if (revertApply.status !== "APPLY_PASS" || !revertApply.reread_verified) {
     throw new Error("revert apply not verified");
   }
 
