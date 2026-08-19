@@ -14,7 +14,7 @@
   "paths": {
     "/health": {
       "get": {
-        "operationId": "addHealth",
+        "operationId": "githubAddHealth",
         "summary": "Health check",
         "responses": {
           "200": {
