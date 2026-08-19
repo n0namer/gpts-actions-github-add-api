@@ -163,6 +163,7 @@ async function buildOutcome(payload, config, deps) {
   const changedLines = countChangedLines(diff_preview);
   checkLimits(file, changedLines, config, payload.options);
   scanSecrets(patched.content);
+  validateContentForPath(payload.path, patched.content);
   return { file, newContent: patched.content, markers_found: patched.markers_found, target_match: patched.target_match, diff_preview, changedLines, patch_id: sha256(JSON.stringify({ payload, new_content_sha256: sha256(patched.content) })) };
 }
 
