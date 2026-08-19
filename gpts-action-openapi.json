@@ -16,6 +16,7 @@
       "get": {
         "operationId": "githubAddHealth",
         "summary": "Health check",
+        "security": [],
         "responses": {
           "200": {
             "description": "Service is healthy",
