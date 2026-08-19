@@ -109,7 +109,7 @@ test("preview and apply work with injected GitHub dependencies and preview_patch
 
 test("sha mismatch returns 409 through API", async () => {
   const handler = createRequestHandler({
-    config: { actionBearerToken: "test-token", actionRequireBearer: false, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    config: { actionBearerToken: "test-token", actionRequireBearer: false, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
     readFile: async () => ({ content: fixture, sha: "actual-sha", size: Buffer.byteLength(fixture) }),
     updateFile: async () => ({ commit_sha: "unused", file_sha_after: "unused" }),
   });
