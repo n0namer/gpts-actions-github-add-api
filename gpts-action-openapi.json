@@ -246,7 +246,7 @@
     },
     "/pull-request/ready": {
       "post": {
-        "operationId": "markPullRequestReady",
+        "operationId": "githubMarkPullRequestReady",
         "summary": "Mark a draft pull request ready for review with head SHA guard",
         "security": [
           {
