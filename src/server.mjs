@@ -195,3 +195,74 @@ function validatePullRequestPayload(payload, options = {}) {
   if (typeof payload.commit_message === "string" && payload.commit_message) result.commit_message = payload.commit_message;
   return result;
 }
+async function buildOutcome(payload, config, deps) {
+  validateAccess(payload, config);
+  const file = await deps.readFile(payload, config);
+  if (file.sha !== payload.expected_sha) throw new GitHubAddError(409, { status: "FILE_CHANGED", expected_sha: payload.expected_sha, actual_sha: file.sha });
+  const patched = applyOperation(file.content, payload.operation);
+  const diff_preview = await createDiffPreview(payload.path, file.content, patched.content);
+  const changedLines = countChangedLines(diff_preview);
+  checkLimits(file, changedLines, config, payload.options);
+  scanSecrets(patched.content);
+  return { file, newContent: patched.content, markers_found: patched.markers_found, target_match: patched.target_match, diff_preview, changedLines, patch_id: sha256(JSON.stringify({ payload, new_content_sha256: sha256(patched.content) })) };
+}
+
+function previewSignature(payload) {
+  return JSON.stringify({ repository_full_name: payload.repository_full_name, branch: payload.branch, path: payload.path, expected_sha: payload.expected_sha, operation: payload.operation });
+}
+
+function savePreview(patchId, payload) { previews.set(patchId, { signature: previewSignature(payload), expiresAt: Date.now() + 600000 }); }
+
+function requirePreview(patchId, payload, required) {
+  if (!required) return;
+  if (!patchId) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "preview_patch_id is required when PATCH_REQUIRE_PREVIEW=true" });
+  const preview = previews.get(patchId);
+  if (!preview || preview.expiresAt < Date.now() || preview.signature !== previewSignature(payload)) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "preview_required_or_expired" });
+}
+
+async function handlePreview(payload, config, deps) {
+  const outcome = await buildOutcome(payload, config, deps);
+  savePreview(outcome.patch_id, payload);
+  const result = { status: "DRY_RUN_PASS", can_apply: true, repository_full_name: payload.repository_full_name, branch: payload.branch, path: payload.path, file_sha_before: outcome.file.sha, operation_type: payload.operation.type, markers_found: outcome.markers_found, changed_lines: { added: outcome.changedLines.added, deleted: outcome.changedLines.deleted }, diff_preview: outcome.diff_preview, patch_id: outcome.patch_id, evidence: { expected_sha_matched: true, repo_allowed: true, branch_allowed: true, path_allowed: true, protected_path_blocked: false, diff_within_limit: true, secret_scan_pass: true } };
+  if (outcome.target_match) result.target_match = outcome.target_match;
+  return result;
+}
+
+async function handleApply(rawPayload, config, deps) {
+  const payload = validatePayload(rawPayload);
+  const commitMessage = requireString(rawPayload.commit_message, "commit_message");
+  const previewPatchId = rawPayload.preview_patch_id || rawPayload.patch_id;
+  requirePreview(previewPatchId, payload, config.requirePreview);
+  const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  locks.add(key);
+  try {
+    const outcome = await buildOutcome(payload, config, deps);
+    const update = await deps.updateFile(payload, outcome.newContent, outcome.file.sha, commitMessage, config);
+    const rereadPayload = { ...payload, expected_sha: update.file_sha_after || payload.expected_sha };
+    let reread = null;
+    for (let attempt = 0; attempt < 5; attempt++) { reread = await deps.readFile(rereadPayload, config); if (reread.content === outcome.newContent) break; await new Promise((r) => setTimeout(r, 250)); }
+    if (!reread || reread.content !== outcome.newContent) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    if (previewPatchId) previews.delete(previewPatchId);
+    const result = { status: "APPLY_PASS", repository_full_name: payload.repository_full_name, branch: payload.branch, path: payload.path, file_sha_before: outcome.file.sha, file_sha_after: reread.sha || update.file_sha_after, commit_sha: update.commit_sha, reread_verified: true, operation_type: payload.operation.type, changed_lines: { added: outcome.changedLines.added, deleted: outcome.changedLines.deleted }, evidence: { expected_sha_matched: true, markers_unique: true, diff_within_limit: true, secret_scan_pass: true, reread_verified: true } };
+    if (outcome.target_match) result.target_match = outcome.target_match;
+    return result;
+  } finally { locks.delete(key); }
+}
+
+async function handleCreate(rawPayload, config, deps) {
+  const payload = validateCreatePayload(rawPayload);
+  validateAccess(payload, config);
+  const size = Buffer.byteLength(payload.content, "utf8");
+  if (size > config.maxFileBytes) throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "file_too_large", max_file_bytes: config.maxFileBytes });
+  scanSecrets(payload.content);
+  const key = `${payload.repository_full_name}:${payload.branch}:${payload.path}`;
+  if (locks.has(key)) throw new GitHubAddError(423, { status: "WRITE_LOCKED", lock_key: key });
+  locks.add(key);
+  try {
+    const create = await deps.createFile(payload, payload.content, payload.commit_message, config);
+    const reread = await deps.readFile(payload, config);
+    if (reread.content !== payload.content) throw new GitHubAddError(500, { status: "GITHUB_ADD_ERROR", message: "reread verification failed" });
+    return { status: "CREATE_PASS", repository_full_name: payload.repository_full_name, branch: payload.branch, path: payload.path, file_sha_after: reread.sha || create.file_sha_after, commit_sha: create.commit_sha, size, reread_verified: true, evidence: { repo_allowed: true, branch_allowed: true, path_allowed: true, protected_path_blocked: false, secret_scan_pass: true, reread_verified: true } };
+  } finally { locks.delete(key); }
+}
