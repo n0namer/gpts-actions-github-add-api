@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { GitHubAddError } from "./errors.mjs";
+import { validateContentForPath } from "./validation.mjs";
 
 export const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -173,6 +174,7 @@ function fallbackDiff(path, oldText, newText) {
 }
 
 export async function createDiffPreview(path, oldText, newText) {
+  validateContentForPath(path, newText);
   try {
     const diffModule = await import("diff");
     if (diffModule.createTwoFilesPatch) return diffModule.createTwoFilesPatch(path, path, oldText, newText, "before", "after");
