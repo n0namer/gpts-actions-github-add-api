@@ -64,6 +64,22 @@ test("validateAccess blocks disallowed protected paths", () => {
   );
 });
 
+test("validateAccess fails closed when allowlists are missing", () => {
+  const config = { allowedRepos: [], allowedBranches: [], allowedPathPrefixes: [], protectedPathPrefixes: [], blockProtectedPaths: true };
+  assert.throws(
+    () => validateAccess({ repository_full_name: "anything/repo", branch: "main", path: "docs/x.md" }, config),
+    (error) => error instanceof GitHubAddError && error.httpStatus === 503 && error.payload.reason === "repository_allowlist_not_configured",
+  );
+});
+
+test("validateAccess returns 403 for protected paths", () => {
+  const config = { allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: [".github/"], protectedPathPrefixes: [".github/"], blockProtectedPaths: true };
+  assert.throws(
+    () => validateAccess({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: ".github/workflows/x.yml" }, config),
+    (error) => error instanceof GitHubAddError && error.httpStatus === 403 && error.payload.reason === "protected_path",
+  );
+});
+
 test("scanSecrets blocks obvious tokens", () => {
   const fakeToken = "ghp_" + "123456789012345678901234567890123456";
   assert.throws(
