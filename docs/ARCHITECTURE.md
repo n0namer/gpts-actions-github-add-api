@@ -133,7 +133,7 @@ Every apply response must include:
 
 ```text
 1. Validate request schema.
-2. Validate repo/branch/path against allowlists.
+2. Validate path safety and protected-path policy.
 3. Read file from GitHub.
 4. Check expected_sha.
 5. Apply marker operation in memory.
