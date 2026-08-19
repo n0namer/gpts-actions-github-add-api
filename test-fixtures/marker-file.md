@@ -7,7 +7,7 @@ Do not use production files for the first apply test.
 ## Replace block
 
 <!-- GPT:START smoke-block -->
-preview-only smoke content
+old smoke content
 <!-- GPT:END smoke-block -->
 
 ## Insert marker
