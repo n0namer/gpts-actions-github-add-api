@@ -1,20 +1,33 @@
 import { GitHubAddError } from "./errors.mjs";
 
-export function validateAccess(payload, config) {
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(payload.repository_full_name)) {
+function requireAllowlist(values, reason) {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new GitHubAddError(503, { status: "SECURITY_CONFIG_NOT_CONFIGURED", reason });
+  }
+}
+
+export function validateRepositoryAccess(repositoryFullName, config) {
+  requireAllowlist(config.allowedRepos, "repository_allowlist_not_configured");
+  if (!config.allowedRepos.includes(repositoryFullName)) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
   }
-  if (config.allowedBranches.length > 0 && !config.allowedBranches.includes(payload.branch)) {
+}
+
+export function validateAccess(payload, config) {
+  validateRepositoryAccess(payload.repository_full_name, config);
+  requireAllowlist(config.allowedBranches, "branch_allowlist_not_configured");
+  requireAllowlist(config.allowedPathPrefixes, "path_allowlist_not_configured");
+  if (!config.allowedBranches.includes(payload.branch)) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "branch_not_allowed" });
   }
-  if (config.allowedPathPrefixes.length > 0 && !config.allowedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
+  if (!config.allowedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "path_prefix_not_allowed" });
   }
   if (payload.path.includes("..") || payload.path.startsWith("/") || payload.path.includes("\\")) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "invalid_path" });
   }
   if (config.blockProtectedPaths && config.protectedPathPrefixes.some((prefix) => payload.path.startsWith(prefix))) {
-    throw new GitHubAddError(422, { status: "PATCH_NOT_APPLICABLE", reason: "protected_path", path: payload.path });
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "protected_path", path: payload.path });
   }
 }
 
