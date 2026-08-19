@@ -32,7 +32,7 @@
     },
     "/file/read": {
       "post": {
-        "operationId": "readFile",
+        "operationId": "githubReadFile",
         "summary": "Read a file from GitHub with line view",
         "security": [
           {
