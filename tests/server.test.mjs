@@ -423,6 +423,24 @@ test("/file/create rejects disallowed path before GitHub write", async () => {
   } finally { server.close(); }
 });
 
+test("/file/create rejects invalid JSON before GitHub write", async () => {
+  let createCalls = 0;
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content: "", sha: "", size: 0 }),
+    createFile: async () => { createCalls++; return { commit_sha: "must-not-run", file_sha_after: "must-not-run" }; },
+  });
+  const server = createServer(handler); server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/invalid.json", content: "{", commit_message: "test: invalid json" }) });
+    assert.equal(res.status, 422);
+    const body = await res.json();
+    assert.equal(body.reason, "invalid_json");
+    assert.equal(createCalls, 0);
+  } finally { server.close(); }
+});
+
 test("/file/create preserves already-exists conflict", async () => {
   const handler = createRequestHandler({
     config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
