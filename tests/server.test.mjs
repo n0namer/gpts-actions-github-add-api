@@ -346,6 +346,79 @@ test("/file/create without Bearer returns 401", async () => {
   } finally { server.close(); }
 });
 
+test("/file/create rejects secret-like content before GitHub write", async () => {
+  let createCalls = 0;
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content: "", sha: "", size: 0 }),
+    createFile: async () => { createCalls++; return { commit_sha: "must-not-run", file_sha_after: "must-not-run" }; },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const fakeToken = "ghp_" + "123456789012345678901234567890123456";
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/secret.md", content: `token=${fakeToken}`, commit_message: "test: reject secret" }) });
+    assert.equal(res.status, 422);
+    const body = await res.json();
+    assert.equal(body.reason, "secret_scan_failed");
+    assert.equal(createCalls, 0);
+  } finally { server.close(); }
+});
+
+test("/file/create rejects oversized content before GitHub write", async () => {
+  let createCalls = 0;
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 8, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content: "", sha: "", size: 0 }),
+    createFile: async () => { createCalls++; return { commit_sha: "must-not-run", file_sha_after: "must-not-run" }; },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/large.md", content: "0123456789", commit_message: "test: reject large file" }) });
+    assert.equal(res.status, 422);
+    const body = await res.json();
+    assert.equal(body.reason, "file_too_large");
+    assert.equal(createCalls, 0);
+  } finally { server.close(); }
+});
+
+test("/file/create rejects disallowed path before GitHub write", async () => {
+  let createCalls = 0;
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [".github/"], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content: "", sha: "", size: 0 }),
+    createFile: async () => { createCalls++; return { commit_sha: "must-not-run", file_sha_after: "must-not-run" }; },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: ".github/workflows/unsafe.yml", content: "name: unsafe\n", commit_message: "test: reject path" }) });
+    assert.equal(res.status, 403);
+    assert.equal(createCalls, 0);
+  } finally { server.close(); }
+});
+
+test("/file/create preserves already-exists conflict", async () => {
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    readFile: async () => ({ content: "existing", sha: "existing-sha", size: 8 }),
+    createFile: async () => { throw new GitHubAddError(409, { status: "FILE_ALREADY_EXISTS", reason: "file_already_exists" }); },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/file/create`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer correct-token" }, body: JSON.stringify({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: "test-fixtures/existing.md", content: "new", commit_message: "test: existing file" }) });
+    assert.equal(res.status, 409);
+    const body = await res.json();
+    assert.equal(body.reason, "file_already_exists");
+  } finally { server.close(); }
+});
+
 /* ──── Preview/apply with replace_exact_once ──── */
 
 test("preview and apply with replace_exact_once", async () => {
