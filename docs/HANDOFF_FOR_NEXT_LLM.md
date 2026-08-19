@@ -110,9 +110,6 @@ Required environment variables:
 PORT=8080
 NODE_ENV=production
 GITHUB_TOKEN=<existing token>
-GITHUB_ALLOWED_REPOS=n0namer/n8n-control,n0namer/gpts-n8n-action-schema,n0namer/GitHub-add
-GITHUB_ALLOWED_BRANCHES=main
-GITHUB_ALLOWED_PATH_PREFIXES=docs/,prompts/,schemas/,workspace/,test-fixtures/
 PATCH_MAX_FILE_BYTES=200000
 PATCH_MAX_CHANGED_LINES=300
 PATCH_REQUIRE_PREVIEW=true
