@@ -362,7 +362,7 @@ test("/file/create without Bearer returns 401", async () => {
 test("/file/create rejects secret-like content before GitHub write", async () => {
   let createCalls = 0;
   const handler = createRequestHandler({
-    config: { actionBearerToken: "correct-token", actionRequireBearer: true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    config: { actionBearerToken: "correct-token", actionRequireBearer: true, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
     readFile: async () => ({ content: "", sha: "", size: 0 }),
     createFile: async () => { createCalls++; return { commit_sha: "must-not-run", file_sha_after: "must-not-run" }; },
   });
