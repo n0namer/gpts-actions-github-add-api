@@ -3,7 +3,7 @@
   "info": {
     "title": "GitHub File Patch API",
     "version": "0.3.0",
-    "description": "Safe GitHub file read and precise patch preview/apply service for GPTS, with guarded pull request read, ready-for-review, and merge operations."
+    "description": "Safe GitHub file read/create and precise patch preview/apply service for GPT Actions, with guarded pull request read, ready-for-review, and merge operations."
   },
   "servers": [
     {
