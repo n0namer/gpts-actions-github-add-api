@@ -147,7 +147,7 @@ Every apply response must include:
 
 ```text
 1. Validate request schema.
-2. Validate repo/branch/path against allowlists.
+2. Validate path safety and protected-path policy.
 3. Acquire write lock for repo + branch + path.
 4. Read file from GitHub again.
 5. Check expected_sha again.
