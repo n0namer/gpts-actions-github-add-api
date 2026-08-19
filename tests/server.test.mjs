@@ -56,27 +56,19 @@ test("insertAfterMarker preserves marker and inserts text", () => {
   assert.match(result.content, /<!-- GPT:INSERT_AFTER smoke-insert -->\ninserted smoke content\n\nEnd\./);
 });
 
-test("validateAccess blocks disallowed protected paths", () => {
-  const config = { allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["docs/", "test-fixtures/"], protectedPathPrefixes: [".github/"], blockProtectedPaths: true };
+test("validateAccess blocks protected paths", () => {
+  const config = { protectedPathPrefixes: [".github/"], blockProtectedPaths: true };
   assert.throws(
     () => validateAccess({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: ".github/workflows/x.yml" }, config),
-    (error) => error instanceof GitHubAddError && error.payload.reason === "path_prefix_not_allowed",
+    (error) => error instanceof GitHubAddError && error.payload.reason === "protected_path",
   );
 });
 
-test("validateAccess fails closed when allowlists are missing", () => {
-  const config = { allowedRepos: [], allowedBranches: [], allowedPathPrefixes: [], protectedPathPrefixes: [], blockProtectedPaths: true };
+test("validateAccess rejects path traversal", () => {
+  const config = { protectedPathPrefixes: [], blockProtectedPaths: true };
   assert.throws(
-    () => validateAccess({ repository_full_name: "anything/repo", branch: "main", path: "docs/x.md" }, config),
-    (error) => error instanceof GitHubAddError && error.httpStatus === 503 && error.payload.reason === "repository_allowlist_not_configured",
-  );
-});
-
-test("validateAccess returns 403 for protected paths", () => {
-  const config = { allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: [".github/"], protectedPathPrefixes: [".github/"], blockProtectedPaths: true };
-  assert.throws(
-    () => validateAccess({ repository_full_name: "n0namer/GitHub-add", branch: "main", path: ".github/workflows/x.yml" }, config),
-    (error) => error instanceof GitHubAddError && error.httpStatus === 403 && error.payload.reason === "protected_path",
+    () => validateAccess({ repository_full_name: "any/repo", branch: "any", path: "../escape.txt" }, config),
+    (error) => error instanceof GitHubAddError && error.httpStatus === 403 && error.payload.reason === "invalid_path",
   );
 });
 
