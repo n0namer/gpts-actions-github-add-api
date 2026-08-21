@@ -516,7 +516,7 @@ export async function githubRestRequest(payload, config) {
     result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: appJwt(config), config });
     authEvidence = { app_id: String(config.githubAppId || "") };
   } else {
-    const credential = await resolveInstallationToken(payload, config);
+    const credential = await resolveInstallationToken({ ...payload, repository_full_name: repositoryScope || payload.repository_full_name }, config);
     result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: credential.token, config });
     authEvidence = { installation_id: credential.installation_id, token_expires_at: credential.expires_at, permissions: credential.permissions };
   }
