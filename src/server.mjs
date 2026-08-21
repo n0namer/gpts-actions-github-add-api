@@ -46,6 +46,14 @@ async function healthPayload(config) {
       configured: Boolean(config.githubAppId && config.githubAppPrivateKey),
       api_version: config.githubApiVersion,
     },
+    github_control_policy: {
+      repository_scope_mode: config.githubRepositoryScopeMode,
+      allowed_repo_count: config.allowedRepos.length,
+      rest_admin_mutations_enabled: Boolean(config.githubRestAdminMutationsEnabled),
+      rest_destructive_mutations_enabled: Boolean(config.githubRestDestructiveMutationsEnabled),
+      graphql_mutations_enabled: Boolean(config.githubGraphqlMutationsEnabled),
+      bearer_required: Boolean(config.actionRequireBearer),
+    },
   };
 
   try {
