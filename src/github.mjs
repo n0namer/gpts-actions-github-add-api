@@ -347,10 +347,19 @@ function normalizeGitHubRestMethod(value) {
 
 function normalizeGitHubRestPath(value) {
   const pathname = String(value || "").trim();
-  if (!pathname.startsWith("/") || pathname.startsWith("//") || pathname.includes("\0") || /[\r\n]/.test(pathname) || pathname.length > 2048) {
-    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path must be an absolute GitHub API path" });
+  if (!pathname.startsWith("/") || pathname.startsWith("//") || pathname.includes("\0") || pathname.includes("\\") || pathname.includes("?") || pathname.includes("#") || /[\r\n]/.test(pathname) || pathname.length > 2048) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path must be an absolute canonical GitHub API path without query, fragment, or backslash" });
   }
   if (/^\/https?:/i.test(pathname)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "external URLs are not allowed" });
+  for (const segment of pathname.split("/").slice(1)) {
+    let decoded;
+    try { decoded = decodeURIComponent(segment); } catch { throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path contains invalid percent-encoding" }); }
+    if (decoded === "." || decoded === ".." || decoded.includes("/") || decoded.includes("\\") || /[\0\r\n]/.test(decoded)) {
+      throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path contains a non-canonical segment" });
+    }
+  }
+  const canonicalPath = new URL(pathname, GITHUB_API_BASE).pathname;
+  if (canonicalPath !== pathname) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path normalization is not allowed" });
   return pathname;
 }
 
