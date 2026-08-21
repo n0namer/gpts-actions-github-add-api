@@ -1005,13 +1005,15 @@ export async function downloadGitHubJobLogs(payload, config) {
   }
   const data = await boundedResponseBody(redirected, maxBytes);
   if (!redirected.ok) throw new GitHubAddError(redirected.status, { status: "GITHUB_LOG_DOWNLOAD_FAILED", github_status: redirected.status });
+  const rawLog = typeof data === "string" ? data : JSON.stringify(data);
+  const log = redactSensitiveText(rawLog);
   return {
     status: "GITHUB_JOB_LOGS_PASS",
     repository_full_name: repositoryFullName,
     job_id: jobId,
-    log: typeof data === "string" ? data : JSON.stringify(data),
+    log,
     redirect_followed: true,
-    bytes: Buffer.byteLength(typeof data === "string" ? data : JSON.stringify(data || "")),
+    bytes: Buffer.byteLength(rawLog || ""),
     evidence: credential.evidence,
   };
 }
