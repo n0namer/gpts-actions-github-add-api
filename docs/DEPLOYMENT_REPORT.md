@@ -1,4 +1,4 @@
-# Deployment Report — GitHub ADD MVP
+# Deployment Report — GitHub Control Plane
 
 REQUEST_ID: `GITHUB_ADD_MVP_001`
 
