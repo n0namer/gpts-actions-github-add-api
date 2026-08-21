@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { once } from "node:events";
 import test from "node:test";
-import { githubGraphqlRequest, githubRestRequest } from "../src/github.mjs";
+import { downloadGitHubJobLogs, githubGraphqlRequest, githubRefWriteProbe, githubRestRequest } from "../src/github.mjs";
 import { openApiDocument } from "../src/openapi.mjs";
 import { createRequestHandler } from "../src/server.mjs";
 
