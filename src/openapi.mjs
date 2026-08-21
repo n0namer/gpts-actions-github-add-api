@@ -67,6 +67,45 @@ export function openApiDocument() {
           },
         },
       },
+      "/github/graphql": {
+        post: {
+          operationId: "githubGraphql",
+          summary: "Call GitHub GraphQL with server-owned user or installation credentials",
+          description: "Bounded GraphQL gateway. Queries are read-only by default; GraphQL mutations require confirm_mutation=true. Installation credentials are minted server-side and never returned.",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubGraphqlRequest" } } } },
+          responses: { "200": { description: "GraphQL request succeeded" }, "400": { description: "Invalid GraphQL request" }, "409": { description: "Mutation confirmation required" }, "502": { description: "GitHub GraphQL request failed" } },
+        },
+      },
+      "/github/repository/diagnose": {
+        post: {
+          operationId: "diagnoseGitHubRepository",
+          summary: "Diagnose repository controls, CI, rulesets, protection, checks, and status",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubRepositoryDiagnoseRequest" } } } },
+          responses: { "200": { description: "Repository diagnostic completed; individual checks include their own ok/status evidence" }, "403": { description: "Repository not allowed" } },
+        },
+      },
+      "/github/ref-write-probe": {
+        post: {
+          operationId: "githubRefWriteProbe",
+          summary: "Verify repository write capability using a temporary self-cleaning branch ref",
+          description: "Creates a station/probe/* ref at the default-branch HEAD, verifies readback, then deletes that exact ref. Requires confirm_mutation=true.",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubRefWriteProbeRequest" } } } },
+          responses: { "200": { description: "Create/readback/delete probe passed" }, "409": { description: "Mutation confirmation required" }, "502": { description: "Probe or cleanup failed" } },
+          "x-openai-isConsequential": true,
+        },
+      },
+      "/github/actions/job-logs": {
+        post: {
+          operationId: "downloadGitHubJobLogs",
+          summary: "Download bounded GitHub Actions job logs without exposing signed redirect URLs",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubJobLogsRequest" } } } },
+          responses: { "200": { description: "Job logs downloaded within configured size bounds" }, "403": { description: "Repository or GitHub permission denied" }, "404": { description: "Job not found" }, "502": { description: "Redirect or log download failed" } },
+        },
+      },
       "/github/app/diagnose": {
         post: {
           operationId: "diagnoseGitHubAppRepository",
