@@ -76,6 +76,9 @@ test("OpenAPI exposes GitHub control-plane 0.5 Actions", () => {
   assert.deepEqual(doc.components.schemas.GitHubRestRequest.properties.auth.enum, ["user", "app", "installation"]);
   assert.equal(doc.components.schemas.GitHubRestRequest.properties.max_pages.maximum, 10);
   assert.equal(doc.components.schemas.GitHubRestRequest.properties.max_items.maximum, 1000);
+  assert.equal(doc.components.schemas.GitHubRestRequest.properties.query_json.type, "string");
+  assert.equal(doc.components.schemas.GitHubRestRequest.properties.body_json.type, "string");
+  assert.equal(doc.components.schemas.GitHubGraphqlRequest.properties.variables_json.type, "string");
 });
 
 test("static GPT Action JSON parses and exposes the 0.5 control plane", async () => {
