@@ -307,6 +307,19 @@ export async function checkGitHubAuth(payload, config) {
 const GITHUB_API_BASE = "https://api.github.com";
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SECRET_RESPONSE_KEYS = /^(?:token|access_token|refresh_token|secret|client_secret|password|private_key|authorization)$/i;
+const SENSITIVE_TEXT_PATTERNS = [
+  /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
+  /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g,
+  /\bsk-[A-Za-z0-9]{32,}\b/g,
+  /\bAKIA[0-9A-Z]{16}\b/g,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+];
+
+function redactSensitiveText(value) {
+  let text = String(value ?? "");
+  for (const pattern of SENSITIVE_TEXT_PATTERNS) text = text.replace(pattern, "[REDACTED]");
+  return text;
+}
 
 const SECRET_BEARING_MUTATION_PATH = /\/secrets(?:\/|$)/i;
 const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+(?:$|\/(?:collaborators|actions\/(?:permissions|runners|variables|workflows\/.+\/dispatches)|dispatches|environments|rulesets|branches\/.+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis|keys|deployments|releases|pages|vulnerability-alerts)(?:\/|$))/i;
