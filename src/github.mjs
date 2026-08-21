@@ -644,6 +644,7 @@ function enforceRestRepositoryScope(payload, pathname, authMode, config) {
 
 export async function githubRestRequest(payload, config) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  payload = normalizeRestGatewayAliases(payload);
   const method = normalizeGitHubRestMethod(payload.method);
   const pathname = normalizeGitHubRestPath(payload.path);
   const authMode = String(payload.auth || "user").trim().toLowerCase();
