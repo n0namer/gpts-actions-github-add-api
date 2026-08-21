@@ -857,6 +857,7 @@ export async function diagnoseGitHubRepositoryControlPlane(payload, config) {
 export async function githubRefWriteProbe(payload, config) {
   const repositoryFullName = String(payload?.repository_full_name || "").trim();
   const { owner, repo } = parseRepository(repositoryFullName);
+  validateRepositoryScope(repositoryFullName, config);
   const auth = String(payload?.auth || "installation").trim().toLowerCase();
   if (!new Set(["user", "installation"]).has(auth)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "probe auth must be user or installation" });
   if (payload?.confirm_mutation !== true) throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for the write probe" });
