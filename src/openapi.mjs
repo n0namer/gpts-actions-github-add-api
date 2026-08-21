@@ -230,6 +230,7 @@ export function openApiDocument() {
             } } },
           },
           responses: { "200": { description: "Merge passed and reread verified" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "409": { description: "Pull request changed or merge blocked" }, "422": { description: "Pull request cannot be merged safely" } },
+          "x-openai-isConsequential": true,
         },
       },
     },
