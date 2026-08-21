@@ -212,9 +212,7 @@ function validateCreatePayload(payload) {
 }
 
 function validateRepositoryAccess(repositoryFullName, config) {
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === String(repositoryFullName).toLowerCase())) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-  }
+  return validateRepositoryScope(repositoryFullName, config);
 }
 
 function validatePullRequestPayload(payload, options = {}) {
