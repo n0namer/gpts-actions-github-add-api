@@ -65,6 +65,7 @@ export function openApiDocument() {
             "502": { description: "GitHub API unavailable, failed, or response too large" },
             "503": { description: "Requested GitHub App authentication is not configured" },
           },
+          "x-openai-isConsequential": true,
         },
       },
       "/github/graphql": {
