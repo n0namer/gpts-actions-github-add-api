@@ -561,13 +561,10 @@ async function resolveInstallationToken(payload, config) {
 }
 
 function repositoryFromRestPath(pathname) {
-  const match = String(pathname || "").match(/^\/repos\/([^/?#]+)\/([^/?#]+)(?:\/|$)/);
+  const policyPath = decodeGitHubPathForPolicy(String(pathname || ""));
+  const match = policyPath.match(/^\/repos\/([^/?#]+)\/([^/?#]+)(?:\/|$)/i);
   if (!match) return null;
-  try {
-    return `${decodeURIComponent(match[1])}/${decodeURIComponent(match[2])}`;
-  } catch {
-    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "repository path contains invalid encoding" });
-  }
+  return `${match[1]}/${match[2]}`;
 }
 
 function enforceRestRepositoryScope(payload, pathname, config) {
