@@ -509,6 +509,10 @@ function paginatedItemCount(value) {
   return arrays.length ? Math.max(...arrays.map((items) => items.length)) : 0;
 }
 
+function serializedJsonBytes(value) {
+  return Buffer.byteLength(JSON.stringify(value ?? null), "utf8");
+}
+
 async function resolveInstallationToken(payload, config) {
   const jwt = appJwt(config);
   let installationId = Number(payload.installation_id || 0);
