@@ -756,6 +756,7 @@ async function githubGraphqlRaw({ query, variables, token, config }) {
 
 export async function githubGraphqlRequest(payload, config) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  payload = normalizeGraphqlGatewayAliases(payload);
   const query = String(payload.query || "");
   if (!query.trim() || query.includes("\0") || Buffer.byteLength(query) > 100000) {
     throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query must be non-empty GraphQL text under 100KB" });
