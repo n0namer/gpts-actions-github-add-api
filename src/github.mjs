@@ -629,7 +629,7 @@ export async function githubRestRequest(payload, config) {
       if (last.status !== 401) {
         result = last;
         authToken = candidate.value;
-        authEvidence = { token_env_name: candidate.name };
+        authEvidence = { credential_mode: "user_token" };
         break;
       }
     }
