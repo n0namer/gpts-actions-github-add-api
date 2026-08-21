@@ -21,6 +21,7 @@ export { scanSecrets, validateAccess } from "./safety.mjs";
 export {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
+  githubRestRequest, diagnoseGitHubAppRepository,
 } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
