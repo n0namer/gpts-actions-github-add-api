@@ -76,6 +76,7 @@ export function openApiDocument() {
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubGraphqlRequest" } } } },
           responses: { "200": { description: "GraphQL request succeeded" }, "400": { description: "Invalid GraphQL request" }, "409": { description: "Mutation confirmation required" }, "502": { description: "GitHub GraphQL request failed" } },
+          "x-openai-isConsequential": true,
         },
       },
       "/github/repository/diagnose": {
