@@ -726,6 +726,73 @@ export async function githubRestRequest(payload, config) {
   };
 }
 
+function normalizeScopedSearchText(value) {
+  const text = String(value || "").trim();
+  if (!text || text.includes("\0") || Buffer.byteLength(text, "utf8") > 512) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query must be non-empty text under 512 bytes" });
+  }
+  return text;
+}
+
+function rejectSearchScopeSyntax(query) {
+  if (/\b(?:repo|org|user):/i.test(query) || /\bOR\b/i.test(query)) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query must not contain repository/user/org scope qualifiers or OR; repository scope is server-controlled" });
+  }
+}
+
+export async function searchAllowedGitHubRepositories(payload, config) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  const query = normalizeScopedSearchText(payload.query).toLowerCase();
+  const maxItems = Number(payload.max_items ?? 20);
+  if (!Number.isInteger(maxItems) || maxItems < 1 || maxItems > 100) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "max_items must be an integer from 1 to 100" });
+  if (!Array.isArray(config.allowedRepos) || config.allowedRepos.length === 0) {
+    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "GITHUB_ALLOWED_REPOS is required for repository search" });
+  }
+  const matches = config.allowedRepos
+    .filter((repository) => String(repository).toLowerCase().includes(query))
+    .slice(0, maxItems)
+    .map((full_name) => ({ full_name }));
+  return { status: "GITHUB_REPOSITORY_SEARCH_PASS", scope: "allowlist", query, total_count: matches.length, items: matches };
+}
+
+export async function searchGitHubRepositoryCode(payload, config) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  const repositoryFullName = String(payload.repository_full_name || "").trim();
+  parseRepository(repositoryFullName);
+  validateRepositoryScope(repositoryFullName, config);
+  const query = normalizeScopedSearchText(payload.query);
+  rejectSearchScopeSyntax(query);
+  const perPage = Number(payload.per_page ?? 20);
+  const page = Number(payload.page ?? 1);
+  if (!Number.isInteger(perPage) || perPage < 1 || perPage > 100) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "per_page must be an integer from 1 to 100" });
+  if (!Number.isInteger(page) || page < 1 || page > 10) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "page must be an integer from 1 to 10" });
+  const candidates = tokenCandidates(config);
+  if (candidates.length === 0) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub user token is not configured" });
+  let result = null;
+  for (const candidate of candidates) {
+    const attempt = await githubRestRaw({ method: "GET", path: "/search/code", query: { q: `${query} repo:${repositoryFullName}`, per_page: perPage, page }, token: candidate.value, config });
+    result = attempt;
+    if (attempt.status !== 401) break;
+  }
+  if (!result?.ok) githubRestFailure(result || { status: 502, data: null });
+  const expected = repositoryFullName.toLowerCase();
+  const items = (Array.isArray(result.data?.items) ? result.data.items : [])
+    .filter((item) => String(item?.repository?.full_name || "").toLowerCase() === expected)
+    .slice(0, perPage);
+  return {
+    status: "GITHUB_CODE_SEARCH_PASS",
+    repository_full_name: repositoryFullName,
+    query,
+    page,
+    per_page: perPage,
+    github_status: result.status,
+    data: { total_count: items.length, incomplete_results: Boolean(result.data?.incomplete_results), items: redactGitHubResponse(items) },
+    request_id: result.request_id,
+    rate_limit_remaining: result.rate_limit_remaining,
+    evidence: { credential_mode: "user_token", repository_scope: "allowlist" },
+  };
+}
+
 async function githubGraphqlRaw({ query, variables, token, config }) {
   let response;
   try {
