@@ -421,7 +421,11 @@ export function createRequestHandler(options = {}) {
     markPullRequestReady: options.markPullRequestReady || markPullRequestReadyForReviewOnGitHub,
     mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
     githubRest: options.githubRest || githubRestRequest,
+    githubGraphql: options.githubGraphql || githubGraphqlRequest,
     diagnoseGitHubApp: options.diagnoseGitHubApp || diagnoseGitHubAppRepository,
+    diagnoseRepository: options.diagnoseRepository || diagnoseGitHubRepositoryControlPlane,
+    refWriteProbe: options.refWriteProbe || githubRefWriteProbe,
+    downloadJobLogs: options.downloadJobLogs || downloadGitHubJobLogs,
   };
 
   return async function requestHandler(req, res) {
