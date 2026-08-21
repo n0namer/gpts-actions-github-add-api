@@ -647,6 +647,9 @@ export async function githubGraphqlRequest(payload, config) {
     throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GraphQL mutations" });
   }
   const repositoryScope = payload.repository_full_name ? String(payload.repository_full_name).trim() : null;
+  if (config.allowedRepos.length > 0 && !repositoryScope) {
+    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_REQUIRED", message: "repository_full_name is required for GraphQL when a repository allowlist is configured" });
+  }
   if (repositoryScope) {
     parseRepository(repositoryScope);
     if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryScope.toLowerCase())) {
