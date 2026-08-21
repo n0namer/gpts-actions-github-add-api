@@ -754,7 +754,7 @@ export async function githubGraphqlRequest(payload, config) {
       const attempt = await githubGraphqlRaw({ query, variables: payload.variables, token: candidate.value, config });
       result = attempt;
       if (attempt.status !== 401) {
-        evidence = { token_env_name: candidate.name };
+        evidence = { credential_mode: "user_token" };
         break;
       }
     }
