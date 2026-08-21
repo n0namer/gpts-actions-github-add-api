@@ -303,6 +303,40 @@ const GITHUB_API_BASE = "https://api.github.com";
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SECRET_RESPONSE_KEYS = /^(?:token|access_token|refresh_token|secret|client_secret|password|private_key|authorization)$/i;
 
+const SECRET_BEARING_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:actions\/secrets|dependabot\/secrets|codespaces\/secrets)(?:\/|$)/i;
+const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:collaborators|actions\/permissions|environments|rulesets|branches\/[^/]+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis)(?:\/|$)/i;
+const PROBE_REF_DELETE_PATH = /^\/repos\/[^/]+\/[^/]+\/git\/refs\/heads\/station\/probe\/[A-Za-z0-9._/-]+$/i;
+
+function classifyRestMutation(method, pathname) {
+  if (!MUTATING_METHODS.has(method)) return "read";
+  if (SECRET_BEARING_MUTATION_PATH.test(pathname)) return "secret_bearing";
+  if (method === "DELETE" && PROBE_REF_DELETE_PATH.test(pathname)) return "write";
+  if (method === "DELETE") return "destructive";
+  if (!pathname.startsWith("/repos/")) return "admin";
+  if (ADMIN_REPOSITORY_MUTATION_PATH.test(pathname)) return "admin";
+  return "write";
+}
+
+function enforceRestMutationPolicy(payload, method, pathname, config) {
+  const mutationClass = classifyRestMutation(method, pathname);
+  if (mutationClass === "read") return mutationClass;
+  if (payload.confirm_mutation !== true) {
+    throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", mutation_class: mutationClass, message: "confirm_mutation=true is required for GitHub REST mutations" });
+  }
+  if (mutationClass === "secret_bearing") {
+    throw new GitHubAddError(403, { status: "SECRET_BEARING_OPERATION_BLOCKED", mutation_class: mutationClass });
+  }
+  if (mutationClass === "admin") {
+    if (!config.githubRestAdminMutationsEnabled) throw new GitHubAddError(403, { status: "ADMIN_MUTATION_DISABLED", mutation_class: mutationClass });
+    if (payload.confirm_admin_mutation !== true) throw new GitHubAddError(409, { status: "ADMIN_MUTATION_CONFIRMATION_REQUIRED", mutation_class: mutationClass });
+  }
+  if (mutationClass === "destructive") {
+    if (!config.githubRestDestructiveMutationsEnabled) throw new GitHubAddError(403, { status: "DESTRUCTIVE_MUTATION_DISABLED", mutation_class: mutationClass });
+    if (payload.confirm_destructive_mutation !== true) throw new GitHubAddError(409, { status: "DESTRUCTIVE_MUTATION_CONFIRMATION_REQUIRED", mutation_class: mutationClass });
+  }
+  return mutationClass;
+}
+
 function normalizeGitHubRestMethod(value) {
   const method = String(value || "GET").trim().toUpperCase();
   if (!["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
