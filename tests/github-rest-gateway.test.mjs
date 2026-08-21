@@ -203,6 +203,31 @@ test("GraphQL mutations are disabled by default and require two confirmations wh
   );
 });
 
+test("Action-friendly JSON aliases normalize REST query/body and GraphQL variables", async () => {
+  const config = { ...baseConfig, githubTokenCandidates: [{ name: "TOKEN", value: "token" }] };
+  let restUrl = null;
+  const rest = await withMockFetch(async (input) => {
+    restUrl = new URL(String(input));
+    return new Response(JSON.stringify([{ id: 1 }]), { status: 200 });
+  }, () => githubRestRequest({ method: "GET", path: "/search/repositories", query_json: '{"q":"control plane","per_page":1}' }, config));
+  assert.equal(rest.status, "GITHUB_REST_PASS");
+  assert.equal(restUrl.searchParams.get("q"), "control plane");
+  assert.equal(restUrl.searchParams.get("per_page"), "1");
+
+  let graphqlBody = null;
+  const graphql = await withMockFetch(async (_input, options = {}) => {
+    graphqlBody = JSON.parse(String(options.body || "{}"));
+    return new Response(JSON.stringify({ data: { repository: { name: "demo" } } }), { status: 200 });
+  }, () => githubGraphqlRequest({ query: "query($owner:String!){repository(owner:$owner,name:\"demo\"){name}}", variables_json: '{"owner":"n0namer"}' }, config));
+  assert.equal(graphql.status, "GITHUB_GRAPHQL_PASS");
+  assert.deepEqual(graphqlBody.variables, { owner: "n0namer" });
+
+  await assert.rejects(
+    githubRestRequest({ method: "GET", path: "/rate_limit", query: {}, query_json: "{}" }, config),
+    (error) => error?.payload?.status === "BAD_REQUEST",
+  );
+});
+
 test("REST infers repository scope from /repos path and enforces allowlist", async () => {
   const config = { ...baseConfig, allowedRepos: ["n0namer/allowed"] };
   await assert.rejects(
