@@ -60,14 +60,38 @@ test("static GPT Action JSON parses and exposes the 0.5 control plane", async ()
   assert.ok(doc.components.schemas.GitHubJobLogsRequest);
 });
 
-test("REST and GraphQL mutations fail closed without explicit confirmation", async () => {
+test("generic mutation policy fails closed by class", async () => {
   await assert.rejects(
     githubRestRequest({ method: "POST", path: "/repos/n0namer/gpt-coding-station/issues" }, baseConfig),
+    (error) => error?.payload?.status === "MUTATION_CONFIRMATION_REQUIRED" && error?.payload?.mutation_class === "write" && error?.httpStatus === 409,
+  );
+  await assert.rejects(
+    githubRestRequest({ method: "PATCH", path: "/repos/n0namer/gpt-coding-station/rulesets/1", confirm_mutation: true }, baseConfig),
+    (error) => error?.payload?.status === "ADMIN_MUTATION_DISABLED" && error?.payload?.mutation_class === "admin" && error?.httpStatus === 403,
+  );
+  await assert.rejects(
+    githubRestRequest({ method: "DELETE", path: "/repos/n0namer/gpt-coding-station/git/refs/heads/not-a-probe", confirm_mutation: true }, baseConfig),
+    (error) => error?.payload?.status === "DESTRUCTIVE_MUTATION_DISABLED" && error?.payload?.mutation_class === "destructive" && error?.httpStatus === 403,
+  );
+  await assert.rejects(
+    githubRestRequest({ method: "PUT", path: "/orgs/example/actions/secrets/SECRET", confirm_mutation: true }, baseConfig),
+    (error) => error?.payload?.status === "SECRET_BEARING_OPERATION_BLOCKED" && error?.payload?.mutation_class === "secret_bearing" && error?.httpStatus === 403,
+  );
+});
+
+test("GraphQL mutations are disabled by default and require two confirmations when enabled", async () => {
+  await assert.rejects(
+    githubGraphqlRequest({ query: "mutation { noop: __typename }" }, baseConfig),
+    (error) => error?.payload?.status === "GRAPHQL_MUTATIONS_DISABLED" && error?.httpStatus === 403,
+  );
+  const enabled = { ...baseConfig, githubGraphqlMutationsEnabled: true };
+  await assert.rejects(
+    githubGraphqlRequest({ query: "mutation { noop: __typename }" }, enabled),
     (error) => error?.payload?.status === "MUTATION_CONFIRMATION_REQUIRED" && error?.httpStatus === 409,
   );
   await assert.rejects(
-    githubGraphqlRequest({ query: "mutation { noop: __typename }" }, baseConfig),
-    (error) => error?.payload?.status === "MUTATION_CONFIRMATION_REQUIRED" && error?.httpStatus === 409,
+    githubGraphqlRequest({ query: "mutation { noop: __typename }", confirm_mutation: true }, enabled),
+    (error) => error?.payload?.status === "ADMIN_MUTATION_CONFIRMATION_REQUIRED" && error?.httpStatus === 409,
   );
 });
 
