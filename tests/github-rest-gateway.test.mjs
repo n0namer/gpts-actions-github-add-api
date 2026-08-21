@@ -22,6 +22,7 @@ const baseConfig = {
   githubAppId: "",
   githubAppPrivateKey: "",
   githubApiVersion: "2026-03-10",
+  githubRepositoryScopeMode: "token",
   githubRestMaxResponseBytes: 2000000,
   githubRestAdminMutationsEnabled: false,
   githubRestDestructiveMutationsEnabled: false,
