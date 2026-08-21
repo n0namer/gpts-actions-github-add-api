@@ -437,9 +437,25 @@ export function createRequestHandler(options = {}) {
         requireBearer(req, config);
         return send(res, 200, await deps.githubRest(await readBody(req), config));
       }
+      if (req.method === "POST" && url.pathname === "/github/graphql") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.githubGraphql(await readBody(req), config));
+      }
       if (req.method === "POST" && url.pathname === "/github/app/diagnose") {
         requireBearer(req, config);
         return send(res, 200, await deps.diagnoseGitHubApp(await readBody(req), config));
+      }
+      if (req.method === "POST" && url.pathname === "/github/repository/diagnose") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.diagnoseRepository(await readBody(req), config));
+      }
+      if (req.method === "POST" && url.pathname === "/github/ref-write-probe") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.refWriteProbe(await readBody(req), config));
+      }
+      if (req.method === "POST" && url.pathname === "/github/actions/job-logs") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.downloadJobLogs(await readBody(req), config));
       }
       if (req.method === "POST" && url.pathname === "/patch/preview") {
         requireBearer(req, config);
