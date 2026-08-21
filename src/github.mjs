@@ -318,19 +318,21 @@ function decodeGitHubPathForPolicy(pathname) {
   try { return decodeURIComponent(pathname); } catch { throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path contains invalid percent-encoding" }); }
 }
 
-function classifyRestMutation(method, pathname) {
+function classifyRestMutation(payload, method, pathname) {
   const policyPath = decodeGitHubPathForPolicy(pathname);
   if (!MUTATING_METHODS.has(method)) return "read";
   if (SECRET_BEARING_MUTATION_PATH.test(policyPath)) return "secret_bearing";
   if (method === "DELETE" && PROBE_REF_DELETE_PATH.test(policyPath)) return "write";
   if (method === "DELETE") return "destructive";
+  if (DESTRUCTIVE_REPOSITORY_MUTATION_PATH.test(policyPath)) return "destructive";
+  if (method === "PATCH" && GIT_REF_UPDATE_PATH.test(policyPath) && payload?.body?.force === true) return "destructive";
   if (!policyPath.toLowerCase().startsWith("/repos/")) return "admin";
   if (ADMIN_REPOSITORY_MUTATION_PATH.test(policyPath)) return "admin";
   return "write";
 }
 
 function enforceRestMutationPolicy(payload, method, pathname, config) {
-  const mutationClass = classifyRestMutation(method, pathname);
+  const mutationClass = classifyRestMutation(payload, method, pathname);
   if (mutationClass === "read") return mutationClass;
   if (payload.confirm_mutation !== true) {
     throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", mutation_class: mutationClass, message: "confirm_mutation=true is required for GitHub REST mutations" });
