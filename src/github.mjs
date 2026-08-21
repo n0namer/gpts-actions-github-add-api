@@ -778,9 +778,7 @@ export async function githubGraphqlRequest(payload, config) {
 export async function diagnoseGitHubAppRepository(payload, config) {
   const repositoryFullName = String(payload?.repository_full_name || "").trim();
   const { owner, repo } = parseRepository(repositoryFullName);
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryFullName.toLowerCase())) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-  }
+  validateRepositoryScope(repositoryFullName, config);
   const jwt = appJwt(config);
   const app = await githubRestRaw({ method: "GET", path: "/app", token: jwt, config });
   if (!app.ok) githubRestFailure(app);
