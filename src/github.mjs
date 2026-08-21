@@ -610,7 +610,7 @@ export async function githubRestRequest(payload, config) {
     let last = null;
     for (const candidate of candidates) {
       last = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: candidate.value, config });
-      if (last.status !== 401 && last.status !== 403) {
+      if (last.status !== 401) {
         result = last;
         authToken = candidate.value;
         authEvidence = { token_env_name: candidate.name };
