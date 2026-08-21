@@ -429,6 +429,14 @@ export function createRequestHandler(options = {}) {
         requireBearer(req, config);
         return send(res, 200, await deps.githubGraphql(await readBody(req), config));
       }
+      if (req.method === "POST" && url.pathname === "/github/search/repositories") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.searchAllowedRepositories(await readBody(req), config));
+      }
+      if (req.method === "POST" && url.pathname === "/github/search/code") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.searchRepositoryCode(await readBody(req), config));
+      }
       if (req.method === "POST" && url.pathname === "/github/app/diagnose") {
         requireBearer(req, config);
         return send(res, 200, await deps.diagnoseGitHubApp(await readBody(req), config));
