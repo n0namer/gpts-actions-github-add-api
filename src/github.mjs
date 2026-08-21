@@ -656,6 +656,13 @@ export async function githubRestRequest(payload, config) {
   const maxItemsRaw = Number(payload.max_items ?? 500);
   if (!Number.isInteger(maxPagesRaw) || maxPagesRaw < 1 || maxPagesRaw > 10) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "max_pages must be an integer from 1 to 10" });
   if (!Number.isInteger(maxItemsRaw) || maxItemsRaw < 1 || maxItemsRaw > 1000) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "max_items must be an integer from 1 to 1000" });
+  if (paginate) {
+    const boundedPerPage = Math.min(maxItemsRaw, 100);
+    const requestedPerPage = Number(payload.query?.per_page);
+    if (payload.query?.per_page == null || (Number.isInteger(requestedPerPage) && requestedPerPage > boundedPerPage)) {
+      payload.query = { ...(payload.query || {}), per_page: boundedPerPage };
+    }
+  }
   const repositoryScope = enforceRestRepositoryScope(payload, pathname, authMode, config);
 
   let result;
