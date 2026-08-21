@@ -217,6 +217,19 @@ test("Action-friendly JSON aliases normalize REST query/body and GraphQL variabl
   assert.equal(restUrl.searchParams.get("q"), "control plane");
   assert.equal(restUrl.searchParams.get("per_page"), "1");
 
+  let restBody = null;
+  const write = await withMockFetch(async (_input, options = {}) => {
+    restBody = JSON.parse(String(options.body || "{}"));
+    return new Response(JSON.stringify({ id: 2 }), { status: 201 });
+  }, () => githubRestRequest({
+    method: "POST",
+    path: "/repos/n0namer/gpt-coding-station/issues",
+    body_json: '{"title":"demo"}',
+    confirm_mutation: true,
+  }, config));
+  assert.equal(write.status, "GITHUB_REST_PASS");
+  assert.deepEqual(restBody, { title: "demo" });
+
   let graphqlBody = null;
   const graphql = await withMockFetch(async (_input, options = {}) => {
     graphqlBody = JSON.parse(String(options.body || "{}"));
