@@ -536,9 +536,16 @@ export async function githubRestRequest(payload, config) {
   if (MUTATING_METHODS.has(method) && payload.confirm_mutation !== true) {
     throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GitHub REST mutations" });
   }
+  const paginate = payload.paginate === true;
+  if (paginate && method !== "GET") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "paginate=true is supported only for GET requests" });
+  const maxPagesRaw = Number(payload.max_pages ?? 5);
+  const maxItemsRaw = Number(payload.max_items ?? 500);
+  if (!Number.isInteger(maxPagesRaw) || maxPagesRaw < 1 || maxPagesRaw > 10) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "max_pages must be an integer from 1 to 10" });
+  if (!Number.isInteger(maxItemsRaw) || maxItemsRaw < 1 || maxItemsRaw > 1000) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "max_items must be an integer from 1 to 1000" });
   const repositoryScope = enforceRestRepositoryScope(payload, pathname, config);
 
   let result;
+  let authToken;
   let authEvidence = {};
   if (authMode === "user") {
     const candidates = tokenCandidates(config);
@@ -548,29 +555,48 @@ export async function githubRestRequest(payload, config) {
       last = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: candidate.value, config });
       if (last.status !== 401 && last.status !== 403) {
         result = last;
+        authToken = candidate.value;
         authEvidence = { token_env_name: candidate.name };
         break;
       }
     }
     result ||= last;
   } else if (authMode === "app") {
-    result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: appJwt(config), config });
+    authToken = appJwt(config);
+    result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: authToken, config });
     authEvidence = { app_id: String(config.githubAppId || "") };
   } else {
     const credential = await resolveInstallationToken({ ...payload, repository_full_name: repositoryScope || payload.repository_full_name }, config);
-    result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: credential.token, config });
+    authToken = credential.token;
+    result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: authToken, config });
     authEvidence = { installation_id: credential.installation_id, token_expires_at: credential.expires_at, permissions: credential.permissions };
   }
   if (!result?.ok) githubRestFailure(result || { status: 502, data: null });
+
+  let pages = 1;
+  let mergedData = result.data;
+  if (paginate && authToken && paginatedItemCount(mergedData) > 0) {
+    let next = nextPageRequest(result.link);
+    while (next && pages < maxPagesRaw && paginatedItemCount(mergedData) < maxItemsRaw) {
+      const page = await githubRestRaw({ method: "GET", path: next.path, query: next.query, token: authToken, config });
+      if (!page.ok) githubRestFailure(page);
+      mergedData = mergePaginatedData(mergedData, page.data, maxItemsRaw);
+      pages += 1;
+      result = page;
+      next = nextPageRequest(page.link);
+    }
+  }
+
   return {
     status: "GITHUB_REST_PASS",
     method,
     path: pathname,
     auth: authMode,
     github_status: result.status,
-    data: redactGitHubResponse(result.data),
+    data: redactGitHubResponse(mergedData),
     request_id: result.request_id,
     rate_limit_remaining: result.rate_limit_remaining,
+    pagination: paginate ? { enabled: true, pages, items: paginatedItemCount(mergedData), max_pages: maxPagesRaw, max_items: maxItemsRaw } : { enabled: false },
     evidence: authEvidence,
   };
 }
