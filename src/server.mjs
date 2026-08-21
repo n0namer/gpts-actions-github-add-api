@@ -51,13 +51,7 @@ async function healthPayload(config) {
   try {
     const probeRepository = config.allowedRepos[0] || "n0namer/content-generator";
     const auth = await checkGitHubAuth({ repository_full_name: probeRepository }, config);
-    payload.github_auth = {
-      status: auth.status,
-      token_env_name: auth.token_env_name,
-      repository_full_name: auth.repository_full_name,
-      repository_private: auth.repository_private,
-      repository_permissions: auth.repository_permissions,
-    };
+    payload.github_auth = { status: auth.status };
   } catch (error) {
     payload.github_auth = {
       status: "GITHUB_AUTH_FAILED",
