@@ -18,6 +18,10 @@ export function loadConfig(env = process.env) {
     githubToken: tokenCandidates[0]?.value || "",
     githubTokenEnvName: tokenCandidates[0]?.name || "",
     githubTokenCandidates: tokenCandidates,
+    githubAppId: String(env.GITHUB_APP_ID || "").trim(),
+    githubAppPrivateKey: String(env.GITHUB_APP_PRIVATE_KEY || ""),
+    githubApiVersion: String(env.GITHUB_API_VERSION || "2026-03-10").trim(),
+    githubRestMaxResponseBytes: Number(env.GITHUB_REST_MAX_RESPONSE_BYTES || 2000000),
     actionBearerToken: env.ACTION_BEARER_TOKEN || "",
     actionRequireBearer: String(env.ACTION_REQUIRE_BEARER ?? "true").toLowerCase() !== "false",
     // Empty allowlists mean "do not restrict in github-add"; GitHub token permissions are the source of truth.
