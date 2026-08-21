@@ -10,6 +10,7 @@ import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
 import {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
+  githubRestRequest, diagnoseGitHubAppRepository,
 } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
