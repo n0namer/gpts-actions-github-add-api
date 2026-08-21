@@ -142,6 +142,29 @@ test("generic mutation policy fails closed by class", async () => {
     githubRestRequest({ method: "PUT", path: "/orgs/example/actions/secrets/SECRET", confirm_mutation: true }, baseConfig),
     (error) => error?.payload?.status === "SECRET_BEARING_OPERATION_BLOCKED" && error?.payload?.mutation_class === "secret_bearing" && error?.httpStatus === 403,
   );
+  await assert.rejects(
+    githubRestRequest({ method: "PUT", path: "/repos/n0namer/gpt-coding-station/environments/prod/secrets/SECRET", confirm_mutation: true }, baseConfig),
+    (error) => error?.payload?.status === "SECRET_BEARING_OPERATION_BLOCKED" && error?.payload?.mutation_class === "secret_bearing",
+  );
+  for (const request of [
+    { method: "PATCH", path: "/repos/n0namer/gpt-coding-station", body: { archived: true } },
+    { method: "POST", path: "/repos/n0namer/gpt-coding-station/releases", body: { tag_name: "v1" } },
+    { method: "POST", path: "/repos/n0namer/gpt-coding-station/actions/workflows/ci.yml/dispatches", body: { ref: "main" } },
+  ]) {
+    await assert.rejects(
+      githubRestRequest({ ...request, confirm_mutation: true }, baseConfig),
+      (error) => error?.payload?.status === "ADMIN_MUTATION_DISABLED" && error?.payload?.mutation_class === "admin",
+    );
+  }
+  for (const request of [
+    { method: "POST", path: "/repos/n0namer/gpt-coding-station/transfer", body: { new_owner: "other" } },
+    { method: "PATCH", path: "/repos/n0namer/gpt-coding-station/git/refs/heads/main", body: { sha: "a".repeat(40), force: true } },
+  ]) {
+    await assert.rejects(
+      githubRestRequest({ ...request, confirm_mutation: true }, baseConfig),
+      (error) => error?.payload?.status === "DESTRUCTIVE_MUTATION_DISABLED" && error?.payload?.mutation_class === "destructive",
+    );
+  }
 });
 
 test("GraphQL mutations are disabled by default and require two confirmations when enabled", async () => {
