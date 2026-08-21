@@ -21,7 +21,7 @@ function tokenCandidates(config) {
 }
 
 function isGitHubAuthError(error) {
-  return error?.status === 401 || error?.status === 403;
+  return error?.status === 401;
 }
 
 async function getOctokitForToken(token) {
