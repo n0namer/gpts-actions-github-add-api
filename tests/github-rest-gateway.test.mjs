@@ -253,6 +253,136 @@ test("REST policy rejects normalization tricks and decodes paths before scope an
   );
 });
 
+test("user-token fallback retries only authentication failures, never permission denials", async () => {
+  const config = {
+    ...baseConfig,
+    githubTokenCandidates: [
+      { name: "FIRST", value: "first-token" },
+      { name: "SECOND", value: "second-token" },
+    ],
+  };
+
+  let calls = 0;
+  await withMockFetch(async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ message: "forbidden" }), { status: 403 });
+  }, async () => {
+    await assert.rejects(
+      githubRestRequest({ method: "GET", path: "/rate_limit" }, config),
+      (error) => error?.payload?.status === "GITHUB_REST_FAILED" && error?.payload?.github_status === 403,
+    );
+  });
+  assert.equal(calls, 1, "403 must not fall through to a more privileged token");
+
+  calls = 0;
+  const result = await withMockFetch(async () => {
+    calls += 1;
+    if (calls === 1) return new Response(JSON.stringify({ message: "bad credentials" }), { status: 401 });
+    return new Response(JSON.stringify({ resources: {} }), { status: 200 });
+  }, () => githubRestRequest({ method: "GET", path: "/rate_limit" }, config));
+  assert.equal(calls, 2, "401 may fall through to the next configured credential");
+  assert.equal(result.status, "GITHUB_REST_PASS");
+  assert.deepEqual(result.evidence, { credential_mode: "user_token" });
+});
+
+test("REST pagination rejects foreign next links and cumulative oversized results", async () => {
+  const config = { ...baseConfig, githubTokenCandidates: [{ name: "TOKEN", value: "token" }] };
+  await withMockFetch(async () => new Response(JSON.stringify([{ id: 1 }]), {
+    status: 200,
+    headers: { link: '<https://evil.example/user/repos?page=2>; rel="next"' },
+  }), async () => {
+    await assert.rejects(
+      githubRestRequest({ method: "GET", path: "/user/repos", paginate: true }, config),
+      (error) => error?.payload?.status === "GITHUB_PAGINATION_LINK_INVALID" && error?.payload?.reason === "unexpected_origin",
+    );
+  });
+
+  const bounded = { ...config, githubRestMaxResponseBytes: 120 };
+  let page = 0;
+  await withMockFetch(async () => {
+    page += 1;
+    const body = JSON.stringify([{ value: (page === 1 ? "a" : "b").repeat(60) }]);
+    const headers = page === 1 ? { link: '<https://api.github.com/user/repos?page=2>; rel="next"' } : {};
+    return new Response(body, { status: 200, headers });
+  }, async () => {
+    await assert.rejects(
+      githubRestRequest({ method: "GET", path: "/user/repos", paginate: true, max_pages: 2, max_items: 10 }, bounded),
+      (error) => error?.payload?.status === "GITHUB_RESPONSE_TOO_LARGE" && error?.payload?.reason === "cumulative_pagination",
+    );
+  });
+  assert.equal(page, 2);
+});
+
+test("Actions job-log redirects are host-bounded, credential-isolated, size-bounded, and redacted", async () => {
+  const config = { ...baseConfig, githubTokenCandidates: [{ name: "TOKEN", value: "token" }] };
+  const requests = [];
+  const result = await withMockFetch(async (input, options = {}) => {
+    requests.push({ url: String(input), headers: options.headers || {} });
+    if (requests.length === 1) {
+      return new Response(null, {
+        status: 302,
+        headers: { location: "https://logs.actions.githubusercontent.com/archive/job.txt?sig=signed-value" },
+      });
+    }
+    return new Response(`line one\nghp_${"A".repeat(24)}\nline three`, { status: 200 });
+  }, () => downloadGitHubJobLogs({ repository_full_name: "n0namer/gpt-coding-station", job_id: 7, auth: "user" }, config));
+
+  assert.equal(requests.length, 2);
+  assert.match(String(requests[0].headers.authorization || ""), /^Bearer /);
+  assert.equal(requests[1].headers.authorization, undefined, "authorization must not be forwarded to the signed log host");
+  assert.equal(result.redirect_followed, true);
+  assert.doesNotMatch(result.log, /ghp_/);
+  assert.match(result.log, /\[REDACTED\]/);
+
+  let unexpectedCalls = 0;
+  await withMockFetch(async () => {
+    unexpectedCalls += 1;
+    return new Response(null, { status: 302, headers: { location: "https://evil.example/log.txt" } });
+  }, async () => {
+    await assert.rejects(
+      downloadGitHubJobLogs({ repository_full_name: "n0namer/gpt-coding-station", job_id: 8, auth: "user" }, config),
+      (error) => error?.payload?.status === "GITHUB_LOG_REDIRECT_INVALID" && error?.payload?.reason === "unexpected_redirect_host",
+    );
+  });
+  assert.equal(unexpectedCalls, 1);
+});
+
+test("ref write probe proves create/readback/delete and absence after cleanup", async () => {
+  const config = { ...baseConfig, githubTokenCandidates: [{ name: "TOKEN", value: "token" }] };
+  const baseSha = "a".repeat(40);
+  const calls = [];
+  const result = await withMockFetch(async (input, options = {}) => {
+    const url = new URL(String(input));
+    const method = String(options.method || "GET").toUpperCase();
+    calls.push({ method, path: url.pathname });
+    if (method === "GET" && url.pathname === "/repos/n0namer/gpt-coding-station") {
+      return new Response(JSON.stringify({ default_branch: "main" }), { status: 200 });
+    }
+    if (method === "GET" && url.pathname === "/repos/n0namer/gpt-coding-station/commits/main") {
+      return new Response(JSON.stringify({ sha: baseSha }), { status: 200 });
+    }
+    if (method === "POST" && url.pathname === "/repos/n0namer/gpt-coding-station/git/refs") {
+      return new Response(JSON.stringify({ ref: "created" }), { status: 201 });
+    }
+    if (method === "GET" && url.pathname.startsWith("/repos/n0namer/gpt-coding-station/git/ref/heads/station/probe/")) {
+      return new Response(JSON.stringify({ object: { sha: baseSha } }), { status: 200 });
+    }
+    if (method === "DELETE" && url.pathname.startsWith("/repos/n0namer/gpt-coding-station/git/refs/heads/station/probe/")) {
+      return new Response(null, { status: 204 });
+    }
+    if (method === "GET" && url.pathname.startsWith("/repos/n0namer/gpt-coding-station/git/refs/heads/station/probe/")) {
+      return new Response(JSON.stringify({ message: "not found" }), { status: 404 });
+    }
+    return new Response(JSON.stringify({ message: `unexpected ${method} ${url.pathname}` }), { status: 500 });
+  }, () => githubRefWriteProbe({ repository_full_name: "n0namer/gpt-coding-station", auth: "user", confirm_mutation: true }, config));
+
+  assert.equal(result.status, "GITHUB_REF_WRITE_PROBE_PASS");
+  assert.equal(result.readback_verified, true);
+  assert.equal(result.cleanup_verified, true);
+  assert.ok(calls.some((item) => item.method === "DELETE" && item.path.includes("/git/refs/heads/station/probe/")));
+  assert.ok(calls.some((item) => item.method === "GET" && item.path.includes("/git/refs/heads/station/probe/")));
+});
+
 test("all control-plane routes dispatch through injected backends", async () => {
   const handler = createRequestHandler({
     config: baseConfig,
