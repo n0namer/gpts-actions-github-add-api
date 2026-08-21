@@ -206,6 +206,7 @@ export function openApiDocument() {
             } } },
           },
           responses: { "200": { description: "Pull request is ready for review and reread verified" }, "401": { description: "Unauthorized" }, "403": { description: "Repository not allowed" }, "409": { description: "Pull request head SHA changed" }, "422": { description: "Operation blocked" } },
+          "x-openai-isConsequential": true,
         },
       },
       "/pull-request/merge": {
