@@ -534,6 +534,89 @@ export async function githubRestRequest(payload, config) {
   };
 }
 
+async function githubGraphqlRaw({ query, variables, token, config }) {
+  let response;
+  try {
+    response = await fetch(`${GITHUB_API_BASE}/graphql`, {
+      method: "POST",
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "user-agent": "github-file-patch-api",
+        "x-github-api-version": config.githubApiVersion || "2026-03-10",
+      },
+      body: JSON.stringify({ query, variables: variables || {} }),
+      redirect: "manual",
+    });
+  } catch {
+    throw new GitHubAddError(502, { status: "GITHUB_API_UNAVAILABLE", message: "GitHub GraphQL request failed at transport layer" });
+  }
+  const data = await boundedResponseBody(response, Number(config.githubRestMaxResponseBytes || 2000000));
+  return {
+    ok: response.ok,
+    status: response.status,
+    data,
+    request_id: response.headers.get("x-github-request-id") || undefined,
+    rate_limit_remaining: response.headers.get("x-ratelimit-remaining") || undefined,
+  };
+}
+
+export async function githubGraphqlRequest(payload, config) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  const query = String(payload.query || "");
+  if (!query.trim() || query.includes("\0") || Buffer.byteLength(query) > 100000) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query must be non-empty GraphQL text under 100KB" });
+  }
+  if (payload.variables != null && (!payload.variables || typeof payload.variables !== "object" || Array.isArray(payload.variables))) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "variables must be an object" });
+  }
+  const authMode = String(payload.auth || "user").trim().toLowerCase();
+  if (!new Set(["user", "installation"]).has(authMode)) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "GraphQL auth must be user or installation" });
+  }
+  const isMutation = /(^|[\s{])mutation(?:\s|\()/i.test(query);
+  if (isMutation && payload.confirm_mutation !== true) {
+    throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GraphQL mutations" });
+  }
+  const repositoryScope = payload.repository_full_name ? String(payload.repository_full_name).trim() : null;
+  if (repositoryScope) {
+    parseRepository(repositoryScope);
+    if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryScope.toLowerCase())) {
+      throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed", repository_full_name: repositoryScope });
+    }
+  }
+
+  let result;
+  let evidence = {};
+  if (authMode === "user") {
+    const candidates = tokenCandidates(config);
+    if (candidates.length === 0) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub user token is not configured" });
+    for (const candidate of candidates) {
+      const attempt = await githubGraphqlRaw({ query, variables: payload.variables, token: candidate.value, config });
+      result = attempt;
+      if (attempt.status !== 401 && attempt.status !== 403) {
+        evidence = { token_env_name: candidate.name };
+        break;
+      }
+    }
+  } else {
+    const credential = await resolveInstallationToken(payload, config);
+    result = await githubGraphqlRaw({ query, variables: payload.variables, token: credential.token, config });
+    evidence = { installation_id: credential.installation_id, token_expires_at: credential.expires_at, permissions: credential.permissions };
+  }
+  if (!result?.ok) githubRestFailure(result || { status: 502, data: null });
+  return {
+    status: "GITHUB_GRAPHQL_PASS",
+    auth: authMode,
+    mutation: isMutation,
+    data: redactGitHubResponse(result.data),
+    request_id: result.request_id,
+    rate_limit_remaining: result.rate_limit_remaining,
+    evidence,
+  };
+}
+
 export async function diagnoseGitHubAppRepository(payload, config) {
   const repositoryFullName = String(payload?.repository_full_name || "").trim();
   const { owner, repo } = parseRepository(repositoryFullName);
