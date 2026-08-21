@@ -119,7 +119,7 @@ test("sha mismatch returns 409 through API", async () => {
 
 async function createAuthTestServer(overrides = {}) {
   const handler = createRequestHandler({
-    config: { actionBearerToken: overrides.bearerToken ?? "correct-token", actionRequireBearer: overrides.requireBearer ?? true, allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: overrides.requirePreview ?? false },
+    config: { actionBearerToken: overrides.bearerToken ?? "correct-token", actionRequireBearer: overrides.requireBearer ?? true, githubRepositoryScopeMode: "allowlist", githubRestAdminMutationsEnabled: false, githubRestDestructiveMutationsEnabled: false, githubGraphqlMutationsEnabled: false, githubApiVersion: "2026-03-10", allowedRepos: ["n0namer/GitHub-add"], allowedBranches: ["main"], allowedPathPrefixes: ["test-fixtures/"], protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: overrides.requirePreview ?? false },
     readFile: async () => ({ content: fixture, sha: "sha-before", size: Buffer.byteLength(fixture) }),
     updateFile: async () => ({ commit_sha: "commit-123", file_sha_after: "sha-after" }),
   });
