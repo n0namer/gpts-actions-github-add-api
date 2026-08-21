@@ -42,7 +42,7 @@ async function healthPayload(config) {
     service: "github-file-patch-api",
     version: "0.5.0",
     source_commit: process.env.SOURCE_COMMIT || "",
-    capabilities: ["file_read", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge", "github_rest", "github_graphql", "github_app_diagnose", "repository_diagnose", "ref_write_probe", "actions_job_logs"],
+    capabilities: ["file_read", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge", "github_rest", "github_graphql", "github_repository_search", "github_code_search", "github_app_diagnose", "repository_diagnose", "ref_write_probe", "actions_job_logs"],
     github_token_runtime: tokenRuntimeDiagnostics(config),
     github_app_runtime: {
       configured: Boolean(config.githubAppId && config.githubAppPrivateKey),
