@@ -683,8 +683,14 @@ export async function githubGraphqlRequest(payload, config) {
     throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "GraphQL auth must be user or installation" });
   }
   const isMutation = /(^|[\s{])mutation(?:\s|\()/i.test(query);
+  if (isMutation && !config.githubGraphqlMutationsEnabled) {
+    throw new GitHubAddError(403, { status: "GRAPHQL_MUTATIONS_DISABLED", mutation_class: "admin" });
+  }
   if (isMutation && payload.confirm_mutation !== true) {
-    throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GraphQL mutations" });
+    throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", mutation_class: "admin", message: "confirm_mutation=true is required for GraphQL mutations" });
+  }
+  if (isMutation && payload.confirm_admin_mutation !== true) {
+    throw new GitHubAddError(409, { status: "ADMIN_MUTATION_CONFIRMATION_REQUIRED", mutation_class: "admin", message: "confirm_admin_mutation=true is required for GraphQL mutations" });
   }
   const repositoryScope = payload.repository_full_name ? String(payload.repository_full_name).trim() : null;
   if (config.allowedRepos.length > 0 && !repositoryScope) {
