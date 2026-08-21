@@ -427,6 +427,14 @@ export function createRequestHandler(options = {}) {
       const url = new URL(req.url || "/", "http://localhost");
       if (req.method === "GET" && url.pathname === "/health") return send(res, 200, await healthPayload(config));
       if (req.method === "GET" && url.pathname === "/openapi.json") return send(res, 200, openApiDocument());
+      if (req.method === "POST" && url.pathname === "/github/rest") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.githubRest(await readBody(req), config));
+      }
+      if (req.method === "POST" && url.pathname === "/github/app/diagnose") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.diagnoseGitHubApp(await readBody(req), config));
+      }
       if (req.method === "POST" && url.pathname === "/patch/preview") {
         requireBearer(req, config);
         return send(res, 200, await handlePreview(validatePayload(await readBody(req)), config, deps));
