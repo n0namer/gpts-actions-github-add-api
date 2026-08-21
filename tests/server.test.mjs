@@ -183,13 +183,23 @@ test("auth: OpenAPI advertises Bearer for patch operations only", async () => {
   } finally { server.close(); }
 });
 
-test("auth: health check does NOT require Bearer", async () => {
+test("auth: health check does NOT require Bearer and exposes only safe policy evidence", async () => {
   const { server, base } = await createAuthTestServer();
   try {
     const res = await fetch(`${base}/health`);
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.status, "ok");
+    assert.deepEqual(body.github_control_policy, {
+      repository_scope_mode: "allowlist",
+      allowed_repo_count: 1,
+      rest_admin_mutations_enabled: false,
+      rest_destructive_mutations_enabled: false,
+      graphql_mutations_enabled: false,
+      bearer_required: true,
+    });
+    assert.equal(JSON.stringify(body).includes("n0namer/GitHub-add"), false, "health must not expose allowlisted repository names");
+    assert.equal(JSON.stringify(body).includes("correct-token"), false, "health must not expose bearer material");
   } finally { server.close(); }
 });
 
