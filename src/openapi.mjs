@@ -30,8 +30,8 @@ export function openApiDocument() {
     openapi: "3.1.0",
     info: {
       title: "GitHub Control + File Patch API",
-      version: "0.4.0",
-      description: "Action-friendly GitHub control plane: safe file patching plus a generic GitHub REST gateway compatible with paths from github/rest-api-description. Supports server-owned user-token auth, GitHub App JWT auth, installation-token auth, mutation confirmation, response size bounds, redirect blocking, and secret redaction.",
+      version: "0.5.0",
+      description: "Action-friendly GitHub control plane: safe file/PR operations plus generic REST and GraphQL gateways, GitHub App/installation auth, bounded pagination, repository/ruleset/CI diagnostics, scoped ref-write probes, bounded Actions job logs, mutation confirmation, repository policy enforcement, response limits, and secret redaction.",
     },
     servers: [
       {
