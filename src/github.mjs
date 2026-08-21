@@ -944,9 +944,7 @@ function isAllowedLogRedirectHost(hostname, config) {
 export async function downloadGitHubJobLogs(payload, config) {
   const repositoryFullName = String(payload?.repository_full_name || "").trim();
   const { owner, repo } = parseRepository(repositoryFullName);
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryFullName.toLowerCase())) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-  }
+  validateRepositoryScope(repositoryFullName, config);
   const jobId = Number(payload?.job_id);
   if (!Number.isInteger(jobId) || jobId <= 0) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "job_id must be a positive integer" });
   const configuredMaxBytes = Number(config.githubRestMaxResponseBytes || 2000000);
