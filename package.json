@@ -1,9 +1,9 @@
 {
   "name": "github-file-patch-api",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
-  "description": "GitHub control plane with full REST gateway, App/installation auth, and safe file patching.",
+  "description": "GitHub control plane with REST/GraphQL, App/installation auth, repository diagnostics, CI logs, scoped write probes, and safe patching.",
   "engines": {
     "node": ">=20"
   },
