@@ -31,12 +31,7 @@ const previews = new Map();
 const locks = new Set();
 
 function tokenRuntimeDiagnostics(config) {
-  const candidates = Array.isArray(config.githubTokenCandidates) ? config.githubTokenCandidates : [];
-  return {
-    token_env_names_configured: candidates.map((candidate) => candidate.name),
-    selected_token_env_name: config.githubTokenEnvName || "",
-    selected_token_present: Boolean(config.githubToken),
-  };
+  return { configured: Boolean(config.githubToken) };
 }
 
 async function healthPayload(config) {
