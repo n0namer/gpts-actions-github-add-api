@@ -55,8 +55,6 @@ async function healthPayload(config) {
   } catch (error) {
     payload.github_auth = {
       status: "GITHUB_AUTH_FAILED",
-      message: error?.payload?.message || error?.message || "GitHub auth check failed",
-      tried_token_env_names: error?.payload?.tried_token_env_names,
       github_status: error?.payload?.github_status || error?.status,
     };
   }
