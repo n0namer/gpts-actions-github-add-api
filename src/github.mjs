@@ -843,7 +843,12 @@ export async function downloadGitHubJobLogs(payload, config) {
   }
   const jobId = Number(payload?.job_id);
   if (!Number.isInteger(jobId) || jobId <= 0) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "job_id must be a positive integer" });
-  const maxBytes = Math.min(Number(payload?.max_bytes || config.githubRestMaxResponseBytes || 2000000), Number(config.githubRestMaxResponseBytes || 2000000));
+  const configuredMaxBytes = Number(config.githubRestMaxResponseBytes || 2000000);
+  const requestedMaxBytes = Number(payload?.max_bytes ?? configuredMaxBytes);
+  if (!Number.isInteger(requestedMaxBytes) || requestedMaxBytes < 1 || requestedMaxBytes > configuredMaxBytes) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: `max_bytes must be an integer from 1 to ${configuredMaxBytes}` });
+  }
+  const maxBytes = requestedMaxBytes;
   const credential = await resolveOperationalToken({ ...payload, repository_full_name: repositoryFullName }, config);
   const apiUrl = `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/jobs/${jobId}/logs`;
   let first;
