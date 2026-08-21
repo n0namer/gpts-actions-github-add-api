@@ -702,6 +702,9 @@ export async function githubGraphqlRequest(payload, config) {
       throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed", repository_full_name: repositoryScope });
     }
   }
+  if (config.allowedRepos.length > 0 && authMode === "user") {
+    throw new GitHubAddError(403, { status: "GRAPHQL_USER_AUTH_SCOPE_UNSAFE", message: "Use installation auth for GraphQL when a repository allowlist is configured" });
+  }
 
   let result;
   let evidence = {};
