@@ -408,6 +408,31 @@ function normalizeGitHubQuery(query) {
   return out;
 }
 
+function parseJsonObjectAlias(value, field) {
+  if (value == null || value === "") return undefined;
+  if (typeof value !== "string") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: `${field} must be a JSON object encoded as a string` });
+  if (Buffer.byteLength(value, "utf8") > 100000) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: `${field} exceeds 100KB` });
+  let parsed;
+  try { parsed = JSON.parse(value); } catch { throw new GitHubAddError(400, { status: "BAD_REQUEST", message: `${field} must contain valid JSON` }); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: `${field} must encode a JSON object` });
+  return parsed;
+}
+
+function normalizeRestGatewayAliases(payload) {
+  if (payload.query != null && payload.query_json != null) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "use query or query_json, not both" });
+  if (payload.body != null && payload.body_json != null) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "use body or body_json, not both" });
+  return {
+    ...payload,
+    query: payload.query ?? parseJsonObjectAlias(payload.query_json, "query_json"),
+    body: payload.body ?? parseJsonObjectAlias(payload.body_json, "body_json"),
+  };
+}
+
+function normalizeGraphqlGatewayAliases(payload) {
+  if (payload.variables != null && payload.variables_json != null) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "use variables or variables_json, not both" });
+  return { ...payload, variables: payload.variables ?? parseJsonObjectAlias(payload.variables_json, "variables_json") };
+}
+
 function redactGitHubResponse(value) {
   if (Array.isArray(value)) return value.map(redactGitHubResponse);
   if (typeof value === "string") return redactSensitiveText(value);
