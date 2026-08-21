@@ -271,6 +271,7 @@ export function openApiDocument() {
             auth: { type: "string", enum: ["user", "installation"], default: "user" },
             query: { type: "string", minLength: 1, maxLength: 100000 },
             variables: { type: "object", additionalProperties: true },
+            variables_json: { type: "string", description: "Action-friendly JSON object string alias for variables when the importer cannot represent a free-form object." },
             repository_full_name: { type: "string", description: "Optional repository policy scope and installation resolver." },
             installation_id: { type: "integer", minimum: 1 },
             confirm_mutation: { type: "boolean", default: false },
