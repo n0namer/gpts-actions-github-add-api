@@ -11,6 +11,7 @@ import {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
   githubRestRequest, githubGraphqlRequest, diagnoseGitHubAppRepository,
+  searchAllowedGitHubRepositories, searchGitHubRepositoryCode,
   diagnoseGitHubRepositoryControlPlane, githubRefWriteProbe, downloadGitHubJobLogs,
 } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
