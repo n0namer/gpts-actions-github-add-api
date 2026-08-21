@@ -84,12 +84,13 @@ Individual diagnostic subchecks report their own result so one unavailable capab
 
 ## Safety model
 
-- Mutating generic REST requests (`POST`, `PUT`, `PATCH`, `DELETE`) require `confirm_mutation=true`.
-- GraphQL mutations require `confirm_mutation=true`.
-- REST repository paths are automatically mapped to repository policy scope.
-- REST pagination is bounded to at most 10 pages / 1000 items.
-- Responses are size-bounded and common secret fields are redacted.
-- External URLs are not accepted by the REST gateway.
+- Repository scope defaults to `GITHUB_REPOSITORY_SCOPE_MODE=allowlist`; an empty allowlist fails closed. Full server-token scope is available only through the explicit `token` mode.
+- Mutating generic REST requests require `confirm_mutation=true`; admin and destructive classes are disabled by default and require separate server enable flags plus dedicated confirmations. Generic secret-bearing mutations are blocked.
+- GraphQL mutations are disabled by default. When explicitly enabled they require both write and admin confirmation; allowlisted GraphQL uses installation auth rather than a broad user token.
+- REST repository paths are automatically mapped to repository policy scope; non-repository routes cannot use broad user/App credentials in allowlist mode.
+- REST pagination is bounded to at most 10 pages / 1000 items and a cumulative response-size budget.
+- Responses, GitHub error text, and returned Actions logs are size-bounded and redact known secret patterns.
+- External URLs are not accepted by the REST gateway; Actions log redirects are HTTPS host-allowlisted and never receive the GitHub Authorization header.
 - File patching remains SHA-guarded, previewable, diff-bounded, secret-scanned and reread-verified.
 - The ref write probe creates only a `station/probe/*` branch ref, verifies it, and deletes that exact ref before reporting PASS.
 - GitHub credentials are held only by the service; health output reports credential presence, not token content or token fingerprints.
