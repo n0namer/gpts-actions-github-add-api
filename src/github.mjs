@@ -631,6 +631,7 @@ export async function githubRestRequest(payload, config) {
     method,
     path: pathname,
     auth: authMode,
+    mutation_class: mutationClass,
     github_status: result.status,
     data: redactGitHubResponse(mergedData),
     request_id: result.request_id,
