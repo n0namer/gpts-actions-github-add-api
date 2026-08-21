@@ -113,6 +113,10 @@ test("REST infers repository scope from /repos path and enforces allowlist", asy
     githubGraphqlRequest({ query: "{ viewer { login } }" }, config),
     (error) => error?.payload?.status === "REPOSITORY_SCOPE_REQUIRED" && error?.httpStatus === 403,
   );
+  await assert.rejects(
+    githubGraphqlRequest({ query: "{ viewer { login } }", repository_full_name: "n0namer/allowed", auth: "user" }, config),
+    (error) => error?.payload?.status === "GRAPHQL_USER_AUTH_SCOPE_UNSAFE" && error?.httpStatus === 403,
+  );
 });
 
 test("all control-plane routes dispatch through injected backends", async () => {
