@@ -851,8 +851,20 @@ export async function githubRefWriteProbe(payload, config) {
   } finally {
     if (created) {
       try {
-        await githubRestRequest({ ...common, method: "DELETE", path: `/repos/${owner}/${repo}/git/refs/heads/${branch}`, confirm_mutation: true }, config);
-        cleanup = true;
+        const refPath = `/repos/${owner}/${repo}/git/refs/heads/${branch}`;
+        await githubRestRequest({ ...common, method: "DELETE", path: refPath, confirm_mutation: true }, config);
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          try {
+            await githubRestRequest({ ...common, method: "GET", path: refPath }, config);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          } catch (error) {
+            if (error?.payload?.github_status === 404 || error?.httpStatus === 404 || error?.status === 404) {
+              cleanup = true;
+              break;
+            }
+            throw error;
+          }
+        }
       } catch {
         cleanup = false;
       }
