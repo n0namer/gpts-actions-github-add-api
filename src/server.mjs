@@ -408,6 +408,8 @@ export function createRequestHandler(options = {}) {
     mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
     githubRest: options.githubRest || githubRestRequest,
     githubGraphql: options.githubGraphql || githubGraphqlRequest,
+    searchAllowedRepositories: options.searchAllowedRepositories || searchAllowedGitHubRepositories,
+    searchRepositoryCode: options.searchRepositoryCode || searchGitHubRepositoryCode,
     diagnoseGitHubApp: options.diagnoseGitHubApp || diagnoseGitHubAppRepository,
     diagnoseRepository: options.diagnoseRepository || diagnoseGitHubRepositoryControlPlane,
     refWriteProbe: options.refWriteProbe || githubRefWriteProbe,
