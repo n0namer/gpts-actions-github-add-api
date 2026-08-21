@@ -36,14 +36,6 @@ function tokenRuntimeDiagnostics(config) {
     token_env_names_configured: candidates.map((candidate) => candidate.name),
     selected_token_env_name: config.githubTokenEnvName || "",
     selected_token_present: Boolean(config.githubToken),
-    selected_token_length: String(config.githubToken || "").length,
-    selected_token_prefix: String(config.githubToken || "").startsWith("github_pat_")
-      ? "github_pat"
-      : String(config.githubToken || "").startsWith("ghp_")
-        ? "ghp"
-        : String(config.githubToken || "").length > 0
-          ? "other"
-          : "none",
   };
 }
 
