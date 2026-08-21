@@ -198,6 +198,27 @@ export function openApiDocument() {
         },
       },
       schemas: {
+        GitHubRestRequest: {
+          type: "object",
+          required: ["method", "path"],
+          properties: {
+            auth: { type: "string", enum: ["user", "app", "installation"], default: "user", description: "Credential mode. App and installation modes require server-side GitHub App credentials." },
+            method: { type: "string", enum: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] },
+            path: { type: "string", examples: ["/repos/n0namer/gpt-coding-station", "/app/installations"] },
+            query: { type: "object", additionalProperties: true },
+            body: { description: "JSON request body passed to GitHub for non-GET/HEAD methods" },
+            repository_full_name: { type: "string", description: "Optional repository scope used for policy checks and automatic installation resolution", examples: ["n0namer/gpt-coding-station"] },
+            installation_id: { type: "integer", minimum: 1, description: "Optional explicit GitHub App installation ID; installation auth can resolve it from repository_full_name" },
+            confirm_mutation: { type: "boolean", default: false, description: "Must be true for POST, PUT, PATCH, or DELETE" },
+          },
+        },
+        GitHubAppDiagnoseRequest: {
+          type: "object",
+          required: ["repository_full_name"],
+          properties: {
+            repository_full_name: { type: "string", examples: ["n0namer/gpt-coding-station"] },
+          },
+        },
         HealthResponse: {
           type: "object",
           required: ["status", "service"],
