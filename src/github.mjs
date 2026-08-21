@@ -572,18 +572,30 @@ function repositoryFromRestPath(pathname) {
   return `${match[1]}/${match[2]}`;
 }
 
-function enforceRestRepositoryScope(payload, pathname, config) {
+function enforceRestRepositoryScope(payload, pathname, authMode, config) {
   const pathRepository = repositoryFromRestPath(pathname);
   const declaredRepository = payload.repository_full_name ? String(payload.repository_full_name).trim() : null;
   if (pathRepository && declaredRepository && pathRepository.toLowerCase() !== declaredRepository.toLowerCase()) {
     throw new GitHubAddError(409, { status: "REPOSITORY_SCOPE_MISMATCH", path_repository: pathRepository, declared_repository: declaredRepository });
   }
-  const repository = declaredRepository || pathRepository;
-  if (repository) parseRepository(repository);
-  if (repository && config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repository.toLowerCase())) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed", repository_full_name: repository });
+  if (pathRepository) {
+    parseRepository(pathRepository);
+    validateRepositoryScope(pathRepository, config);
+    return pathRepository;
   }
-  return repository;
+  const scopeMode = String(config.githubRepositoryScopeMode || "allowlist").toLowerCase();
+  if (declaredRepository) {
+    parseRepository(declaredRepository);
+    validateRepositoryScope(declaredRepository, config);
+    if (scopeMode !== "token" && authMode !== "installation") {
+      throw new GitHubAddError(403, { status: "NON_REPOSITORY_ROUTE_SCOPE_UNSAFE", message: "Non-repository REST routes require installation auth with repository_full_name, or explicit GITHUB_REPOSITORY_SCOPE_MODE=token" });
+    }
+    return declaredRepository;
+  }
+  if (scopeMode !== "token") {
+    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_REQUIRED", message: "Repository-scoped mode requires a /repos/{owner}/{repo} path or installation auth with repository_full_name" });
+  }
+  return null;
 }
 
 export async function githubRestRequest(payload, config) {
