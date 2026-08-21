@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { createSign, randomUUID } from "node:crypto";
 import { GitHubAddError } from "./errors.mjs";
+import { validateRepositoryScope } from "./safety.mjs";
 import { validateContentForPath } from "./validation.mjs";
 
 function parseRepository(fullName) {
