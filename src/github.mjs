@@ -462,6 +462,30 @@ async function resolveInstallationToken(payload, config) {
   };
 }
 
+function repositoryFromRestPath(pathname) {
+  const match = String(pathname || "").match(/^\/repos\/([^/?#]+)\/([^/?#]+)(?:\/|$)/);
+  if (!match) return null;
+  try {
+    return `${decodeURIComponent(match[1])}/${decodeURIComponent(match[2])}`;
+  } catch {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "repository path contains invalid encoding" });
+  }
+}
+
+function enforceRestRepositoryScope(payload, pathname, config) {
+  const pathRepository = repositoryFromRestPath(pathname);
+  const declaredRepository = payload.repository_full_name ? String(payload.repository_full_name).trim() : null;
+  if (pathRepository && declaredRepository && pathRepository.toLowerCase() !== declaredRepository.toLowerCase()) {
+    throw new GitHubAddError(409, { status: "REPOSITORY_SCOPE_MISMATCH", path_repository: pathRepository, declared_repository: declaredRepository });
+  }
+  const repository = declaredRepository || pathRepository;
+  if (repository) parseRepository(repository);
+  if (repository && config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repository.toLowerCase())) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed", repository_full_name: repository });
+  }
+  return repository;
+}
+
 export async function githubRestRequest(payload, config) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
   const method = normalizeGitHubRestMethod(payload.method);
@@ -471,9 +495,7 @@ export async function githubRestRequest(payload, config) {
   if (MUTATING_METHODS.has(method) && payload.confirm_mutation !== true) {
     throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GitHub REST mutations" });
   }
-  if (payload.repository_full_name && config.allowedRepos.length > 0 && !config.allowedRepos.includes(payload.repository_full_name)) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-  }
+  const repositoryScope = enforceRestRepositoryScope(payload, pathname, config);
 
   let result;
   let authEvidence = {};
