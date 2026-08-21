@@ -410,6 +410,7 @@ function normalizeGitHubQuery(query) {
 
 function redactGitHubResponse(value) {
   if (Array.isArray(value)) return value.map(redactGitHubResponse);
+  if (typeof value === "string") return redactSensitiveText(value);
   if (!value || typeof value !== "object") return value;
   const out = {};
   for (const [key, item] of Object.entries(value)) {
