@@ -303,7 +303,7 @@ const GITHUB_API_BASE = "https://api.github.com";
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SECRET_RESPONSE_KEYS = /^(?:token|access_token|refresh_token|secret|client_secret|password|private_key|authorization)$/i;
 
-const SECRET_BEARING_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:actions\/secrets|dependabot\/secrets|codespaces\/secrets)(?:\/|$)/i;
+const SECRET_BEARING_MUTATION_PATH = /\/(?:actions|dependabot|codespaces)\/secrets(?:\/|$)/i;
 const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:collaborators|actions\/permissions|environments|rulesets|branches\/[^/]+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis)(?:\/|$)/i;
 const PROBE_REF_DELETE_PATH = /^\/repos\/[^/]+\/[^/]+\/git\/refs\/heads\/station\/probe\/[A-Za-z0-9._/-]+$/i;
 
