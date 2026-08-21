@@ -23,6 +23,10 @@ const baseConfig = {
   githubAppPrivateKey: "",
   githubApiVersion: "2026-03-10",
   githubRestMaxResponseBytes: 2000000,
+  githubRestAdminMutationsEnabled: false,
+  githubRestDestructiveMutationsEnabled: false,
+  githubGraphqlMutationsEnabled: false,
+  githubLogRedirectHostSuffixes: ["githubusercontent.com", "actions.githubusercontent.com", "blob.core.windows.net"],
 };
 
 test("OpenAPI exposes GitHub control-plane 0.5 Actions", () => {
