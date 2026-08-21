@@ -22,6 +22,10 @@ export function loadConfig(env = process.env) {
     githubAppPrivateKey: String(env.GITHUB_APP_PRIVATE_KEY || ""),
     githubApiVersion: String(env.GITHUB_API_VERSION || "2026-03-10").trim(),
     githubRestMaxResponseBytes: Number(env.GITHUB_REST_MAX_RESPONSE_BYTES || 2000000),
+    githubRestAdminMutationsEnabled: String(env.GITHUB_REST_ADMIN_MUTATIONS_ENABLED ?? "false").toLowerCase() === "true",
+    githubRestDestructiveMutationsEnabled: String(env.GITHUB_REST_DESTRUCTIVE_MUTATIONS_ENABLED ?? "false").toLowerCase() === "true",
+    githubGraphqlMutationsEnabled: String(env.GITHUB_GRAPHQL_MUTATIONS_ENABLED ?? "false").toLowerCase() === "true",
+    githubLogRedirectHostSuffixes: csv(env.GITHUB_LOG_REDIRECT_HOST_SUFFIXES, "githubusercontent.com,actions.githubusercontent.com,blob.core.windows.net"),
     actionBearerToken: env.ACTION_BEARER_TOKEN || "",
     actionRequireBearer: String(env.ACTION_REQUIRE_BEARER ?? "true").toLowerCase() !== "false",
     // Empty allowlists mean "do not restrict in github-add"; GitHub token permissions are the source of truth.
