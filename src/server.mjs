@@ -44,8 +44,6 @@ async function healthPayload(config) {
     github_token_runtime: tokenRuntimeDiagnostics(config),
     github_app_runtime: {
       configured: Boolean(config.githubAppId && config.githubAppPrivateKey),
-      app_id_present: Boolean(config.githubAppId),
-      private_key_present: Boolean(config.githubAppPrivateKey),
       api_version: config.githubApiVersion,
     },
   };
