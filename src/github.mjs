@@ -567,9 +567,7 @@ export async function githubRestRequest(payload, config) {
   const pathname = normalizeGitHubRestPath(payload.path);
   const authMode = String(payload.auth || "user").trim().toLowerCase();
   if (!new Set(["user", "app", "installation"]).has(authMode)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "auth must be user, app, or installation" });
-  if (MUTATING_METHODS.has(method) && payload.confirm_mutation !== true) {
-    throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GitHub REST mutations" });
-  }
+  const mutationClass = enforceRestMutationPolicy(payload, method, pathname, config);
   const paginate = payload.paginate === true;
   if (paginate && method !== "GET") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "paginate=true is supported only for GET requests" });
   const maxPagesRaw = Number(payload.max_pages ?? 5);
