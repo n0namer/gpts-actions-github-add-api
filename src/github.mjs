@@ -929,7 +929,7 @@ async function resolveOperationalToken(payload, config) {
   if (auth !== "user") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "auth must be user or installation" });
   const candidates = tokenCandidates(config);
   if (candidates.length === 0) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub user token is not configured" });
-  return { auth, token: candidates[0].value, evidence: { token_env_name: candidates[0].name } };
+  return { auth, token: candidates[0].value, evidence: { credential_mode: "user_token" } };
 }
 
 function isAllowedLogRedirectHost(hostname, config) {
