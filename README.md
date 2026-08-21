@@ -1,108 +1,127 @@
-# GitHub ADD
+# GitHub Control + File Patch API
 
-**GitHub ADD** = **GitHub Additional Commands**.
-
-This repository contains the architecture and implementation plan for a small standalone service that gives GPTS extra safe GitHub commands that the normal GitHub connector/API does not provide directly.
+This service is the GitHub control plane used by GPT Actions. It keeps the original stale-safe file patching workflow and adds broad GitHub API coverage without exposing GitHub credentials to the model.
 
 ## North Star
 
-Give GPTS a safe, deterministic, evidence-based way to edit small parts of GitHub text files without manually rebuilding and overwriting the whole file in the model context.
-
 ```text
-GPTS → GitHub ADD → GitHub API
-                 ↳ kpdecker/jsdiff for text patch/diff
+GPT Actions
+   ↓
+GitHub Control + File Patch API
+   ├─ safe file / patch / PR operations
+   ├─ GitHub REST gateway
+   ├─ GitHub GraphQL gateway
+   ├─ GitHub App / installation authentication
+   ├─ repository / ruleset / CI diagnostics
+   └─ bounded operational probes and Actions logs
+   ↓
+GitHub
 ```
 
-## What problem this solves
+The target is to make this service sufficient for normal repository development and GitHub operations so a separate direct `api.github.com` Action is not required.
 
-GitHub can update files, but the file update API replaces file content in a commit. It does not provide a native high-level operation like:
+## Version 0.5 control plane
 
-```text
-replace this exact block between markers
-insert this text after this marker
-preview this patch before commit
-```
-
-GPTS can currently read files and update complete files through the GitHub connector, but that is risky for partial edits:
-
-- the model may accidentally overwrite unrelated content;
-- line numbers drift;
-- concurrent edits can be lost;
-- there is no built-in dry-run patch preview;
-- there is no simple marker-based operation.
-
-GitHub ADD is a small safety adapter:
-
-```text
-read file → apply patch in memory → preview diff → apply through GitHub API → reread proof
-```
-
-## MVP decision
-
-Use the simplest architecture.
-
-- Separate Railway project/service.
-- Use existing GitHub token in MVP.
-- Use `kpdecker/jsdiff` / npm package `diff` as ready-made text diff/patch core.
-- Use GitHub REST API client, preferably `@octokit/rest`.
-- Do **not** build GitHub App in MVP.
-- Do **not** merge this into `n8n-control`.
-- Do **not** build a universal GitHub operator.
-
-## MVP endpoints
+High-value endpoints:
 
 ```text
 GET  /health
 GET  /openapi.json
+POST /github/rest
+POST /github/graphql
+POST /github/app/diagnose
+POST /github/repository/diagnose
+POST /github/ref-write-probe
+POST /github/actions/job-logs
+POST /file/read
+POST /file/create
 POST /patch/preview
 POST /patch/apply
+POST /pull-request/read
+POST /pull-request/ready
+POST /pull-request/merge
 ```
 
-## MVP operations
+`/github/rest` is the universal fallback for official GitHub REST paths. It supports server-owned user-token, GitHub App JWT, and short-lived installation-token authentication. Repository scope is inferred from `/repos/{owner}/{repo}` paths and checked against the local allowlist.
+
+`/github/graphql` is the GraphQL fallback. Mutations require explicit confirmation. When a repository allowlist is configured, GraphQL calls require an explicit `repository_full_name` policy scope.
+
+## GitHub App model
+
+GitHub App credentials remain server-side:
 
 ```text
-replace_between_markers
-insert_after_marker
+GITHUB_APP_ID
+GITHUB_APP_PRIVATE_KEY
 ```
 
-## Not MVP
+The service can discover the installation for a repository and mint short-lived repository-scoped installation tokens. Tokens and private keys are never returned in API responses.
+
+`POST /github/app/diagnose` verifies:
 
 ```text
-GitHub App
-Marketplace
-billing/dashboard
-PR mode
-full repo checkout
-multi-file batch patch
-.github/workflows editing
-secrets/env/credentials editing
-universal GitHub operator
+App JWT
+→ repository installation discovery
+→ approved installation permissions
+→ short-lived token mint
+→ repository access readback
 ```
 
-## Source of truth in this repository
+## Repository and CI diagnostics
 
-Read in this order:
+`POST /github/repository/diagnose` collects bounded evidence for:
 
-1. `docs/HANDOFF_FOR_NEXT_LLM.md`
-2. `docs/ARCHITECTURE.md`
-3. `docs/API_CONTRACT.md`
-4. `docs/IMPLEMENTATION_PLAN.md`
-5. `docs/RAILWAY_DEPLOYMENT.md`
-6. `docs/TASKS.yaml`
+- repository metadata and default branch;
+- repository rulesets;
+- branch protection;
+- GitHub Actions permissions and workflows;
+- check runs;
+- combined commit status.
 
-## Implementation principle
+Individual diagnostic subchecks report their own result so one unavailable capability does not hide the rest of the evidence.
 
-Do not write speculative code first. Start with an implementation package, then build the smallest working service.
+`POST /github/actions/job-logs` follows GitHub's temporary job-log redirect server-side, does not expose the signed URL, does not forward GitHub authorization to the redirect target, and enforces a response-size bound.
 
-Required proof before DONE:
+## Safety model
 
-- `/health` returns 200.
-- `/openapi.json` is available.
-- `/patch/preview` returns `DRY_RUN_PASS` on marker fixture.
-- `/patch/apply` returns `APPLY_PASS` on test file.
-- GitHub commit SHA is returned.
-- Reread verifies final content.
-- `expected_sha` mismatch returns 409.
-- missing or duplicate marker returns 422.
-- protected paths are blocked.
-- no secrets printed in logs.
+- Mutating generic REST requests (`POST`, `PUT`, `PATCH`, `DELETE`) require `confirm_mutation=true`.
+- GraphQL mutations require `confirm_mutation=true`.
+- REST repository paths are automatically mapped to repository policy scope.
+- REST pagination is bounded to at most 10 pages / 1000 items.
+- Responses are size-bounded and common secret fields are redacted.
+- External URLs are not accepted by the REST gateway.
+- File patching remains SHA-guarded, previewable, diff-bounded, secret-scanned and reread-verified.
+- The ref write probe creates only a `station/probe/*` branch ref, verifies it, and deletes that exact ref before reporting PASS.
+- GitHub credentials are held only by the service; health output reports credential presence, not token content or token fingerprints.
+
+Existing specialized operations should be preferred when they fit because they provide stronger domain-specific guards. The generic REST/GraphQL gateways are fallbacks for operations not covered by specialized endpoints.
+
+## Action schema
+
+The JSON schema intended for GPT Action import is:
+
+```text
+gpts-action-openapi.json
+```
+
+YAML is not the publication format for this service. The build test suite parses this JSON and verifies the 0.5 control-plane operation IDs and required schemas.
+
+## Validation / DONE gate
+
+`npm run check` is the pre-deployment gate. It performs syntax checks for the server, GitHub backend and OpenAPI module, then runs all tests.
+
+A release is not considered accepted until evidence shows:
+
+- `npm run check` PASS;
+- deployed image commit equals the intended source commit;
+- `/health` reports the intended version/capabilities;
+- the static Action JSON parses and exposes the required operation IDs;
+- repository-policy and mutation-confirmation tests PASS;
+- live GitHub operations used for acceptance have observable readback;
+- temporary probe state is cleaned up.
+
+## Current deployment
+
+The Coolify application is `github-file-patch-api` at `https://github-patch.srv1904412.hstgr.cloud`.
+
+GitHub App authentication is optional at runtime. Until `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` are configured, user-token operations can work but App/installation diagnostics correctly report App auth as unavailable.
