@@ -75,7 +75,8 @@ export async function readFileFromGitHub(payload, config) {
   } catch (error) {
     if (error instanceof GitHubAddError) throw error;
     if (error.status === 404 || error.message === "not-file") throw new GitHubAddError(404, { status: "FILE_NOT_FOUND", path: payload.path });
-    if (error.status === 401 || error.status === 403) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub authentication failed" });
+    if (error.status === 401) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub authentication failed" });
+    if (error.status === 403) throw new GitHubAddError(403, { status: "GITHUB_FORBIDDEN", message: "GitHub denied repository access" });
     throw error;
   }
 }
