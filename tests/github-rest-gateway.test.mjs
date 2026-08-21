@@ -39,6 +39,23 @@ test("OpenAPI exposes GitHub control-plane 0.5 Actions", () => {
   assert.equal(doc.components.schemas.GitHubRestRequest.properties.max_items.maximum, 1000);
 });
 
+test("static GPT Action JSON parses and exposes the 0.5 control plane", async () => {
+  const raw = await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8");
+  const doc = JSON.parse(raw);
+  assert.equal(doc.openapi, "3.1.0");
+  assert.equal(doc.info.version, "0.5.0");
+  assert.equal(doc.paths["/github/rest"].post.operationId, "githubRest");
+  assert.equal(doc.paths["/github/graphql"].post.operationId, "githubGraphql");
+  assert.equal(doc.paths["/github/repository/diagnose"].post.operationId, "diagnoseGitHubRepository");
+  assert.equal(doc.paths["/github/ref-write-probe"].post.operationId, "githubRefWriteProbe");
+  assert.equal(doc.paths["/github/actions/job-logs"].post.operationId, "downloadGitHubJobLogs");
+  assert.equal(doc.components.schemas.GitHubRestRequest.properties.max_pages.maximum, 10);
+  assert.ok(doc.components.schemas.GitHubGraphqlRequest);
+  assert.ok(doc.components.schemas.GitHubRepositoryDiagnoseRequest);
+  assert.ok(doc.components.schemas.GitHubRefWriteProbeRequest);
+  assert.ok(doc.components.schemas.GitHubJobLogsRequest);
+});
+
 test("REST and GraphQL mutations fail closed without explicit confirmation", async () => {
   await assert.rejects(
     githubRestRequest({ method: "POST", path: "/repos/n0namer/gpt-coding-station/issues" }, baseConfig),
