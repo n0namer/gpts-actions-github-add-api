@@ -418,6 +418,8 @@ export function createRequestHandler(options = {}) {
     readPullRequest: options.readPullRequest || readPullRequestFromGitHub,
     markPullRequestReady: options.markPullRequestReady || markPullRequestReadyForReviewOnGitHub,
     mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
+    githubRest: options.githubRest || githubRestRequest,
+    diagnoseGitHubApp: options.diagnoseGitHubApp || diagnoseGitHubAppRepository,
   };
 
   return async function requestHandler(req, res) {
