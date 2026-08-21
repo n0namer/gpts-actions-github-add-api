@@ -304,16 +304,21 @@ const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SECRET_RESPONSE_KEYS = /^(?:token|access_token|refresh_token|secret|client_secret|password|private_key|authorization)$/i;
 
 const SECRET_BEARING_MUTATION_PATH = /\/(?:actions|dependabot|codespaces)\/secrets(?:\/|$)/i;
-const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:collaborators|actions\/permissions|environments|rulesets|branches\/[^/]+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis)(?:\/|$)/i;
+const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:collaborators|actions\/permissions|environments|rulesets|branches\/.+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis)(?:\/|$)/i;
 const PROBE_REF_DELETE_PATH = /^\/repos\/[^/]+\/[^/]+\/git\/refs\/heads\/station\/probe\/[A-Za-z0-9._/-]+$/i;
 
+function decodeGitHubPathForPolicy(pathname) {
+  try { return decodeURIComponent(pathname); } catch { throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path contains invalid percent-encoding" }); }
+}
+
 function classifyRestMutation(method, pathname) {
+  const policyPath = decodeGitHubPathForPolicy(pathname);
   if (!MUTATING_METHODS.has(method)) return "read";
-  if (SECRET_BEARING_MUTATION_PATH.test(pathname)) return "secret_bearing";
-  if (method === "DELETE" && PROBE_REF_DELETE_PATH.test(pathname)) return "write";
+  if (SECRET_BEARING_MUTATION_PATH.test(policyPath)) return "secret_bearing";
+  if (method === "DELETE" && PROBE_REF_DELETE_PATH.test(policyPath)) return "write";
   if (method === "DELETE") return "destructive";
-  if (!pathname.startsWith("/repos/")) return "admin";
-  if (ADMIN_REPOSITORY_MUTATION_PATH.test(pathname)) return "admin";
+  if (!policyPath.toLowerCase().startsWith("/repos/")) return "admin";
+  if (ADMIN_REPOSITORY_MUTATION_PATH.test(policyPath)) return "admin";
   return "write";
 }
 
