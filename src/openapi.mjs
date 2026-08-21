@@ -311,7 +311,7 @@ export function openApiDocument() {
           properties: {
             status: { type: "string", examples: ["ok"] },
             service: { type: "string", examples: ["github-file-patch-api"] },
-            version: { type: "string", examples: ["0.3.0"] },
+            version: { type: "string", examples: ["0.5.0"] },
           },
         },
         CreateFileRequest: {
