@@ -68,6 +68,44 @@ export function openApiDocument() {
           "x-openai-isConsequential": true,
         },
       },
+      "/github/search/repositories": {
+        post: {
+          operationId: "searchGitHubRepositories",
+          summary: "Search only repositories admitted by the server allowlist",
+          description: "Read-only repository discovery constrained to GITHUB_ALLOWED_REPOS. The query cannot expand scope beyond the configured allowlist.",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: {
+            type: "object",
+            required: ["query"],
+            properties: {
+              query: { type: "string", minLength: 1, maxLength: 512 },
+              max_items: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+            },
+            additionalProperties: false,
+          } } } },
+          responses: { "200": { description: "Allowlisted repository search completed" }, "400": { description: "Invalid search query" }, "403": { description: "Repository allowlist is not configured" } },
+        },
+      },
+      "/github/search/code": {
+        post: {
+          operationId: "searchGitHubCode",
+          summary: "Search code inside one allowlisted repository",
+          description: "Read-only code search. repository_full_name must be allowlisted; repo/org/user qualifiers and OR are rejected because scope is server-controlled.",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: {
+            type: "object",
+            required: ["repository_full_name", "query"],
+            properties: {
+              repository_full_name: { type: "string" },
+              query: { type: "string", minLength: 1, maxLength: 512 },
+              per_page: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+              page: { type: "integer", minimum: 1, maximum: 10, default: 1 },
+            },
+            additionalProperties: false,
+          } } } },
+          responses: { "200": { description: "Scoped code search completed" }, "400": { description: "Invalid search query" }, "403": { description: "Repository not allowed" }, "502": { description: "GitHub code search failed" } },
+        },
+      },
       "/github/graphql": {
         post: {
           operationId: "githubGraphql",
