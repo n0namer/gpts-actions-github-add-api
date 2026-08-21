@@ -24,6 +24,7 @@ export {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
   githubRestRequest, githubGraphqlRequest, diagnoseGitHubAppRepository,
+  searchAllowedGitHubRepositories, searchGitHubRepositoryCode,
   diagnoseGitHubRepositoryControlPlane, githubRefWriteProbe, downloadGitHubJobLogs,
 } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
