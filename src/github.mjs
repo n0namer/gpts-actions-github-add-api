@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { createSign } from "node:crypto";
 import { GitHubAddError } from "./errors.mjs";
 import { validateContentForPath } from "./validation.mjs";
 
