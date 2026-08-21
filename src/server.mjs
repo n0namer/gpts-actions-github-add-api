@@ -10,7 +10,8 @@ import { checkLimits, scanSecrets, validateAccess } from "./safety.mjs";
 import {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
-  githubRestRequest, diagnoseGitHubAppRepository,
+  githubRestRequest, githubGraphqlRequest, diagnoseGitHubAppRepository,
+  diagnoseGitHubRepositoryControlPlane, githubRefWriteProbe, downloadGitHubJobLogs,
 } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
@@ -21,7 +22,8 @@ export { scanSecrets, validateAccess } from "./safety.mjs";
 export {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
-  githubRestRequest, diagnoseGitHubAppRepository,
+  githubRestRequest, githubGraphqlRequest, diagnoseGitHubAppRepository,
+  diagnoseGitHubRepositoryControlPlane, githubRefWriteProbe, downloadGitHubJobLogs,
 } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
