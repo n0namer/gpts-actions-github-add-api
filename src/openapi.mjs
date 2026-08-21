@@ -254,6 +254,50 @@ export function openApiDocument() {
             confirm_mutation: { type: "boolean", default: false, description: "Must be true for POST, PUT, PATCH, or DELETE" },
           },
         },
+        GitHubGraphqlRequest: {
+          type: "object",
+          required: ["query"],
+          properties: {
+            auth: { type: "string", enum: ["user", "installation"], default: "user" },
+            query: { type: "string", minLength: 1, maxLength: 100000 },
+            variables: { type: "object", additionalProperties: true },
+            repository_full_name: { type: "string", description: "Optional repository policy scope and installation resolver." },
+            installation_id: { type: "integer", minimum: 1 },
+            confirm_mutation: { type: "boolean", default: false },
+          },
+        },
+        GitHubRepositoryDiagnoseRequest: {
+          type: "object",
+          required: ["repository_full_name"],
+          properties: {
+            repository_full_name: { type: "string", examples: ["n0namer/gpt-coding-station"] },
+            auth: { type: "string", enum: ["user", "installation"], default: "user" },
+            installation_id: { type: "integer", minimum: 1 },
+            branch: { type: "string", description: "Optional branch override; defaults to repository default branch." },
+            ref: { type: "string", description: "Optional ref used for check-runs and combined status." },
+          },
+        },
+        GitHubRefWriteProbeRequest: {
+          type: "object",
+          required: ["repository_full_name", "confirm_mutation"],
+          properties: {
+            repository_full_name: { type: "string", examples: ["n0namer/gpt-coding-station"] },
+            auth: { type: "string", enum: ["user", "installation"], default: "installation" },
+            installation_id: { type: "integer", minimum: 1 },
+            confirm_mutation: { type: "boolean", const: true },
+          },
+        },
+        GitHubJobLogsRequest: {
+          type: "object",
+          required: ["repository_full_name", "job_id"],
+          properties: {
+            repository_full_name: { type: "string", examples: ["n0namer/gpt-coding-station"] },
+            job_id: { type: "integer", minimum: 1 },
+            auth: { type: "string", enum: ["user", "installation"], default: "user" },
+            installation_id: { type: "integer", minimum: 1 },
+            max_bytes: { type: "integer", minimum: 1, maximum: 2000000, default: 2000000 },
+          },
+        },
         GitHubAppDiagnoseRequest: {
           type: "object",
           required: ["repository_full_name"],
