@@ -53,7 +53,7 @@ export function openApiDocument() {
         post: {
           operationId: "githubRest",
           summary: "Call any GitHub REST API path through the server-owned credential gateway",
-          description: "Use concrete REST paths from the official github/rest-api-description. GET/HEAD are read-only. POST/PUT/PATCH/DELETE require confirm_mutation=true. auth=user uses the configured server PAT/token; auth=app signs a short-lived GitHub App JWT; auth=installation resolves or uses an installation ID and mints an installation token server-side. Tokens and common secret fields are never returned.",
+          description: "Use concrete REST paths from the official github/rest-api-description. GET/HEAD are read-only. Generic writes require confirm_mutation=true. Admin mutations are disabled by default and, when server-enabled, also require confirm_admin_mutation=true. Destructive mutations are disabled by default and, when server-enabled, also require confirm_destructive_mutation=true. Secret-bearing mutations are blocked. Repository scope and mutation policy are enforced on the decoded canonical path. auth=user uses the configured server token; auth=app signs a short-lived GitHub App JWT; auth=installation mints a short-lived installation token server-side.",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubRestRequest" } } } },
           responses: {
