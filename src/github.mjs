@@ -944,6 +944,9 @@ export async function downloadGitHubJobLogs(payload, config) {
   let target;
   try { target = new URL(String(location || "")); } catch { throw new GitHubAddError(502, { status: "GITHUB_LOG_REDIRECT_INVALID" }); }
   if (target.protocol !== "https:") throw new GitHubAddError(502, { status: "GITHUB_LOG_REDIRECT_INVALID", reason: "non_https_redirect" });
+  if (!isAllowedLogRedirectHost(target.hostname, config)) {
+    throw new GitHubAddError(502, { status: "GITHUB_LOG_REDIRECT_INVALID", reason: "unexpected_redirect_host" });
+  }
   let redirected;
   try {
     redirected = await fetch(target, { redirect: "error", headers: { "user-agent": "github-file-patch-api" } });
