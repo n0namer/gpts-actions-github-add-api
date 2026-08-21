@@ -647,3 +647,109 @@ export async function diagnoseGitHubAppRepository(payload, config) {
     repository_access: { ok: true, private: Boolean(repoCheck.data?.private), permissions: repoCheck.data?.permissions || undefined },
   };
 }
+
+
+async function diagnosticRest(payload, config) {
+  try {
+    const result = await githubRestRequest(payload, config);
+    return { ok: true, github_status: result.github_status, data: result.data };
+  } catch (error) {
+    return {
+      ok: false,
+      status: error?.payload?.status || "GITHUB_REST_FAILED",
+      github_status: error?.payload?.github_status || error?.httpStatus || error?.status,
+      message: error?.payload?.message || error?.message || "GitHub request failed",
+    };
+  }
+}
+
+export async function diagnoseGitHubRepositoryControlPlane(payload, config) {
+  const repositoryFullName = String(payload?.repository_full_name || "").trim();
+  const { owner, repo } = parseRepository(repositoryFullName);
+  if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryFullName.toLowerCase())) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+  }
+  const auth = String(payload?.auth || "user").trim().toLowerCase();
+  if (!new Set(["user", "installation"]).has(auth)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "diagnostic auth must be user or installation" });
+  const base = { auth, repository_full_name: repositoryFullName, installation_id: payload?.installation_id };
+  const metadata = await diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}` }, config);
+  const defaultBranch = String(payload?.branch || metadata.data?.default_branch || "").trim();
+  if (!defaultBranch) throw new GitHubAddError(502, { status: "GITHUB_REPOSITORY_METADATA_INVALID", message: "default branch could not be resolved" });
+  const ref = String(payload?.ref || defaultBranch).trim();
+  const [rulesets, protection, actionsPermissions, workflows, checkRuns, combinedStatus] = await Promise.all([
+    diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}/rulesets` }, config),
+    diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}/branches/${encodeURIComponent(defaultBranch)}/protection` }, config),
+    diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}/actions/permissions` }, config),
+    diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}/actions/workflows`, query: { per_page: 10 } }, config),
+    diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}/check-runs`, query: { per_page: 100 } }, config),
+    diagnosticRest({ ...base, method: "GET", path: `/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}/status` }, config),
+  ]);
+  return {
+    status: "GITHUB_REPOSITORY_DIAGNOSE_PASS",
+    repository_full_name: repositoryFullName,
+    auth,
+    default_branch: defaultBranch,
+    ref,
+    metadata,
+    rulesets,
+    branch_protection: protection,
+    actions_permissions: actionsPermissions,
+    workflows,
+    check_runs: checkRuns,
+    combined_status: combinedStatus,
+  };
+}
+
+export async function githubRefWriteProbe(payload, config) {
+  const repositoryFullName = String(payload?.repository_full_name || "").trim();
+  const { owner, repo } = parseRepository(repositoryFullName);
+  const auth = String(payload?.auth || "installation").trim().toLowerCase();
+  if (!new Set(["user", "installation"]).has(auth)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "probe auth must be user or installation" });
+  if (payload?.confirm_mutation !== true) throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for the write probe" });
+  const common = { auth, repository_full_name: repositoryFullName, installation_id: payload?.installation_id };
+  const repoInfo = await githubRestRequest({ ...common, method: "GET", path: `/repos/${owner}/${repo}` }, config);
+  const defaultBranch = String(repoInfo.data?.default_branch || "").trim();
+  if (!defaultBranch) throw new GitHubAddError(502, { status: "GITHUB_REPOSITORY_METADATA_INVALID" });
+  const head = await githubRestRequest({ ...common, method: "GET", path: `/repos/${owner}/${repo}/commits/${encodeURIComponent(defaultBranch)}` }, config);
+  const baseSha = String(head.data?.sha || "").trim();
+  if (!/^[0-9a-f]{40}$/i.test(baseSha)) throw new GitHubAddError(502, { status: "GITHUB_REPOSITORY_HEAD_INVALID" });
+  const branch = `station/probe/${randomUUID().replaceAll("-", "").slice(0, 20)}`;
+  let created = false;
+  let cleanup = false;
+  try {
+    await githubRestRequest({
+      ...common,
+      method: "POST",
+      path: `/repos/${owner}/${repo}/git/refs`,
+      body: { ref: `refs/heads/${branch}`, sha: baseSha },
+      confirm_mutation: true,
+    }, config);
+    created = true;
+    const reread = await githubRestRequest({ ...common, method: "GET", path: `/repos/${owner}/${repo}/git/ref/heads/${branch}` }, config);
+    if (String(reread.data?.object?.sha || "").toLowerCase() !== baseSha.toLowerCase()) {
+      throw new GitHubAddError(502, { status: "GITHUB_REF_READBACK_MISMATCH" });
+    }
+  } finally {
+    if (created) {
+      try {
+        await githubRestRequest({ ...common, method: "DELETE", path: `/repos/${owner}/${repo}/git/refs/heads/${branch}`, confirm_mutation: true }, config);
+        cleanup = true;
+      } catch {
+        cleanup = false;
+      }
+    }
+  }
+  if (!cleanup) throw new GitHubAddError(502, { status: "GITHUB_PROBE_CLEANUP_FAILED", branch });
+  return {
+    status: "GITHUB_REF_WRITE_PROBE_PASS",
+    repository_full_name: repositoryFullName,
+    auth,
+    default_branch: defaultBranch,
+    base_sha: baseSha,
+    temporary_branch: branch,
+    created: true,
+    readback_verified: true,
+    cleanup_verified: true,
+  };
+}
+
