@@ -154,6 +154,7 @@ export function openApiDocument() {
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/CreateFileRequest" } } } },
           responses: { "200": { description: "File created successfully" }, "401": { description: "Unauthorized — missing or invalid Bearer token" }, "409": { description: "File already exists" }, "422": { description: "Create cannot be applied safely or JSON validation failed" } },
+          "x-openai-isConsequential": true,
         },
       },
       "/patch/preview": {
