@@ -298,3 +298,247 @@ export async function checkGitHubAuth(payload, config) {
     return result;
   });
 }
+
+const GITHUB_API_BASE = "https://api.github.com";
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const SECRET_RESPONSE_KEYS = /^(?:token|access_token|refresh_token|secret|client_secret|password|private_key|authorization)$/i;
+
+function normalizeGitHubRestMethod(value) {
+  const method = String(value || "GET").trim().toUpperCase();
+  if (!["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "method must be GET, HEAD, POST, PUT, PATCH, or DELETE" });
+  }
+  return method;
+}
+
+function normalizeGitHubRestPath(value) {
+  const pathname = String(value || "").trim();
+  if (!pathname.startsWith("/") || pathname.startsWith("//") || pathname.includes("\0") || /[\r\n]/.test(pathname) || pathname.length > 2048) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path must be an absolute GitHub API path" });
+  }
+  if (/^\/https?:/i.test(pathname)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "external URLs are not allowed" });
+  return pathname;
+}
+
+function normalizeGitHubQuery(query) {
+  if (query == null) return {};
+  if (!query || typeof query !== "object" || Array.isArray(query)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query must be an object" });
+  const out = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (!/^[A-Za-z0-9_.-]{1,128}$/.test(key)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query contains an invalid key" });
+    if (value == null || ["string", "number", "boolean"].includes(typeof value)) out[key] = value;
+    else if (Array.isArray(value) && value.every((item) => ["string", "number", "boolean"].includes(typeof item))) out[key] = value;
+    else throw new GitHubAddError(400, { status: "BAD_REQUEST", message: `query.${key} has an unsupported value` });
+  }
+  return out;
+}
+
+function redactGitHubResponse(value) {
+  if (Array.isArray(value)) return value.map(redactGitHubResponse);
+  if (!value || typeof value !== "object") return value;
+  const out = {};
+  for (const [key, item] of Object.entries(value)) {
+    out[key] = SECRET_RESPONSE_KEYS.test(key) ? "[REDACTED]" : redactGitHubResponse(item);
+  }
+  return out;
+}
+
+function base64Url(value) {
+  return Buffer.from(value).toString("base64url");
+}
+
+function appJwt(config) {
+  const appId = String(config.githubAppId || "").trim();
+  const privateKey = String(config.githubAppPrivateKey || "").replaceAll("\\n", "\n").trim();
+  if (!/^[1-9][0-9]*$/.test(appId) || !privateKey) {
+    throw new GitHubAddError(503, { status: "GITHUB_APP_NOT_CONFIGURED", message: "GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are required" });
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const payload = base64Url(JSON.stringify({ iat: now - 60, exp: now + 540, iss: appId }));
+  const signingInput = `${header}.${payload}`;
+  let signature;
+  try {
+    const signer = createSign("RSA-SHA256");
+    signer.update(signingInput);
+    signer.end();
+    signature = signer.sign(privateKey).toString("base64url");
+  } catch {
+    throw new GitHubAddError(503, { status: "GITHUB_APP_KEY_INVALID", message: "GitHub App private key could not sign a JWT" });
+  }
+  return `${signingInput}.${signature}`;
+}
+
+async function boundedResponseBody(response, maxBytes) {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      try { await reader.cancel(); } catch {}
+      throw new GitHubAddError(502, { status: "GITHUB_RESPONSE_TOO_LARGE", max_response_bytes: maxBytes });
+    }
+    chunks.push(Buffer.from(value));
+  }
+  if (total === 0) return null;
+  const text = Buffer.concat(chunks).toString("utf8");
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+async function githubRestRaw({ method, path: pathname, query = {}, body, token, config }) {
+  const url = new URL(normalizeGitHubRestPath(pathname), GITHUB_API_BASE);
+  for (const [key, value] of Object.entries(normalizeGitHubQuery(query))) {
+    if (Array.isArray(value)) for (const item of value) url.searchParams.append(key, String(item));
+    else if (value != null) url.searchParams.set(key, String(value));
+  }
+  const headers = {
+    accept: "application/vnd.github+json",
+    authorization: `Bearer ${token}`,
+    "user-agent": "github-file-patch-api",
+    "x-github-api-version": config.githubApiVersion || "2026-03-10",
+  };
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: body == null ? headers : { ...headers, "content-type": "application/json" },
+      body: body == null || method === "GET" || method === "HEAD" ? undefined : JSON.stringify(body),
+      redirect: "manual",
+    });
+  } catch {
+    throw new GitHubAddError(502, { status: "GITHUB_API_UNAVAILABLE", message: "GitHub API request failed at transport layer" });
+  }
+  const data = await boundedResponseBody(response, Number(config.githubRestMaxResponseBytes || 2000000));
+  return {
+    ok: response.ok,
+    status: response.status,
+    data,
+    request_id: response.headers.get("x-github-request-id") || undefined,
+    rate_limit_remaining: response.headers.get("x-ratelimit-remaining") || undefined,
+  };
+}
+
+function githubRestFailure(result) {
+  const message = typeof result.data === "object" && result.data && typeof result.data.message === "string"
+    ? result.data.message.slice(0, 1200)
+    : `GitHub API returned status ${result.status}`;
+  throw new GitHubAddError(result.status >= 400 && result.status < 600 ? result.status : 502, {
+    status: "GITHUB_REST_FAILED",
+    github_status: result.status,
+    message,
+    request_id: result.request_id,
+  });
+}
+
+async function resolveInstallationToken(payload, config) {
+  const jwt = appJwt(config);
+  let installationId = Number(payload.installation_id || 0);
+  let repository = null;
+  if (payload.repository_full_name) {
+    repository = parseRepository(payload.repository_full_name);
+  }
+  if (!Number.isInteger(installationId) || installationId <= 0) {
+    if (!repository) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "installation auth requires installation_id or repository_full_name" });
+    const lookup = await githubRestRaw({ method: "GET", path: `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.repo)}/installation`, token: jwt, config });
+    if (!lookup.ok) githubRestFailure(lookup);
+    installationId = Number(lookup.data?.id);
+  }
+  if (!Number.isInteger(installationId) || installationId <= 0) throw new GitHubAddError(502, { status: "GITHUB_INSTALLATION_INVALID" });
+  const mintBody = repository ? { repositories: [repository.repo] } : {};
+  const minted = await githubRestRaw({ method: "POST", path: `/app/installations/${installationId}/access_tokens`, body: mintBody, token: jwt, config });
+  if (!minted.ok) githubRestFailure(minted);
+  const token = minted.data?.token;
+  if (typeof token !== "string" || token.length < 20) throw new GitHubAddError(502, { status: "GITHUB_INSTALLATION_TOKEN_INVALID" });
+  return {
+    token,
+    installation_id: installationId,
+    expires_at: minted.data?.expires_at,
+    permissions: minted.data?.permissions || {},
+    repositories: Array.isArray(minted.data?.repositories) ? minted.data.repositories.map((item) => item.full_name).filter(Boolean) : undefined,
+  };
+}
+
+export async function githubRestRequest(payload, config) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  const method = normalizeGitHubRestMethod(payload.method);
+  const pathname = normalizeGitHubRestPath(payload.path);
+  const authMode = String(payload.auth || "user").trim().toLowerCase();
+  if (!new Set(["user", "app", "installation"]).has(authMode)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "auth must be user, app, or installation" });
+  if (MUTATING_METHODS.has(method) && payload.confirm_mutation !== true) {
+    throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required for GitHub REST mutations" });
+  }
+  if (payload.repository_full_name && config.allowedRepos.length > 0 && !config.allowedRepos.includes(payload.repository_full_name)) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+  }
+
+  let result;
+  let authEvidence = {};
+  if (authMode === "user") {
+    const candidates = tokenCandidates(config);
+    if (candidates.length === 0) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub user token is not configured" });
+    let last = null;
+    for (const candidate of candidates) {
+      last = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: candidate.value, config });
+      if (last.status !== 401 && last.status !== 403) {
+        result = last;
+        authEvidence = { token_env_name: candidate.name };
+        break;
+      }
+    }
+    result ||= last;
+  } else if (authMode === "app") {
+    result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: appJwt(config), config });
+    authEvidence = { app_id: String(config.githubAppId || "") };
+  } else {
+    const credential = await resolveInstallationToken(payload, config);
+    result = await githubRestRaw({ method, path: pathname, query: payload.query, body: payload.body, token: credential.token, config });
+    authEvidence = { installation_id: credential.installation_id, token_expires_at: credential.expires_at, permissions: credential.permissions };
+  }
+  if (!result?.ok) githubRestFailure(result || { status: 502, data: null });
+  return {
+    status: "GITHUB_REST_PASS",
+    method,
+    path: pathname,
+    auth: authMode,
+    github_status: result.status,
+    data: redactGitHubResponse(result.data),
+    request_id: result.request_id,
+    rate_limit_remaining: result.rate_limit_remaining,
+    evidence: authEvidence,
+  };
+}
+
+export async function diagnoseGitHubAppRepository(payload, config) {
+  const repositoryFullName = String(payload?.repository_full_name || "").trim();
+  const { owner, repo } = parseRepository(repositoryFullName);
+  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(repositoryFullName)) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+  }
+  const jwt = appJwt(config);
+  const app = await githubRestRaw({ method: "GET", path: "/app", token: jwt, config });
+  if (!app.ok) githubRestFailure(app);
+  const installation = await githubRestRaw({ method: "GET", path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/installation`, token: jwt, config });
+  if (!installation.ok) githubRestFailure(installation);
+  const credential = await resolveInstallationToken({ repository_full_name: repositoryFullName, installation_id: installation.data?.id }, config);
+  const repoCheck = await githubRestRaw({ method: "GET", path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, token: credential.token, config });
+  if (!repoCheck.ok) githubRestFailure(repoCheck);
+  return {
+    status: "GITHUB_APP_DIAGNOSE_PASS",
+    repository_full_name: repositoryFullName,
+    app: { id: app.data?.id, slug: app.data?.slug, name: app.data?.name },
+    installation: {
+      id: installation.data?.id,
+      account: installation.data?.account?.login,
+      account_type: installation.data?.account?.type,
+      repository_selection: installation.data?.repository_selection,
+      permissions: installation.data?.permissions || {},
+      suspended_at: installation.data?.suspended_at || null,
+    },
+    token_mint: { ok: true, expires_at: credential.expires_at, permissions: credential.permissions, repositories: credential.repositories },
+    repository_access: { ok: true, private: Boolean(repoCheck.data?.private), permissions: repoCheck.data?.permissions || undefined },
+  };
+}
