@@ -207,6 +207,28 @@ test("REST infers repository scope from /repos path and enforces allowlist", asy
   );
 });
 
+test("repository scope defaults fail closed for generic REST and GraphQL", async () => {
+  const locked = { ...baseConfig, githubRepositoryScopeMode: "allowlist", allowedRepos: [] };
+  await assert.rejects(
+    githubRestRequest({ method: "GET", path: "/repos/n0namer/allowed" }, locked),
+    (error) => error?.payload?.status === "REPOSITORY_SCOPE_NOT_CONFIGURED" && error?.httpStatus === 403,
+  );
+  await assert.rejects(
+    githubRestRequest({ method: "GET", path: "/user" }, locked),
+    (error) => error?.payload?.status === "REPOSITORY_SCOPE_REQUIRED" && error?.httpStatus === 403,
+  );
+  await assert.rejects(
+    githubGraphqlRequest({ query: "{ viewer { login } }" }, locked),
+    (error) => error?.payload?.status === "REPOSITORY_SCOPE_NOT_CONFIGURED" && error?.httpStatus === 403,
+  );
+
+  const allowlisted = { ...locked, allowedRepos: ["n0namer/allowed"] };
+  await assert.rejects(
+    githubRestRequest({ method: "GET", path: "/search/code", repository_full_name: "n0namer/allowed", auth: "user", query: { q: "repo:n0namer/allowed test" } }, allowlisted),
+    (error) => error?.payload?.status === "NON_REPOSITORY_ROUTE_SCOPE_UNSAFE" && error?.httpStatus === 403,
+  );
+});
+
 test("REST policy rejects normalization tricks and decodes paths before scope and risk checks", async () => {
   const config = { ...baseConfig, allowedRepos: ["n0namer/allowed"] };
   for (const path of [
