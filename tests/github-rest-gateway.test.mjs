@@ -330,6 +330,24 @@ test("user-token fallback retries only authentication failures, never permission
   assert.deepEqual(result.evidence, { credential_mode: "user_token" });
 });
 
+test("REST pagination bounds the first GitHub page before downloading it", async () => {
+  const config = { ...baseConfig, githubTokenCandidates: [{ name: "TOKEN", value: "token" }] };
+  let requestedUrl = null;
+  const result = await withMockFetch(async (input) => {
+    requestedUrl = new URL(String(input));
+    return new Response(JSON.stringify([{ sha: "a".repeat(40) }]), { status: 200 });
+  }, () => githubRestRequest({
+    method: "GET",
+    path: "/repos/n0namer/gpt-coding-station/commits",
+    paginate: true,
+    max_pages: 1,
+    max_items: 1,
+  }, config));
+  assert.equal(requestedUrl.searchParams.get("per_page"), "1");
+  assert.equal(result.pagination.items, 1);
+  assert.equal(result.pagination.max_items, 1);
+});
+
 test("REST pagination rejects foreign next links and cumulative oversized results", async () => {
   const config = { ...baseConfig, githubTokenCandidates: [{ name: "TOKEN", value: "token" }] };
   await withMockFetch(async () => new Response(JSON.stringify([{ id: 1 }]), {
