@@ -30,6 +30,40 @@ const baseConfig = {
   githubLogRedirectHostSuffixes: ["githubusercontent.com", "actions.githubusercontent.com", "blob.core.windows.net"],
 };
 
+async function withMockFetch(mockFetch, operation) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch;
+  try {
+    return await operation();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+function collectRefs(value, out = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectRefs(item, out);
+    return out;
+  }
+  if (!value || typeof value !== "object") return out;
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "$ref" && typeof item === "string") out.push(item);
+    else collectRefs(item, out);
+  }
+  return out;
+}
+
+function operationIds(document) {
+  const ids = [];
+  for (const pathItem of Object.values(document.paths || {})) {
+    for (const method of ["get", "post", "put", "patch", "delete", "head"]) {
+      if (pathItem?.[method]?.operationId) ids.push(pathItem[method].operationId);
+    }
+  }
+  return ids;
+}
+
+
 test("OpenAPI exposes GitHub control-plane 0.5 Actions", () => {
   const doc = openApiDocument();
   assert.equal(doc.info.version, "0.5.0");
