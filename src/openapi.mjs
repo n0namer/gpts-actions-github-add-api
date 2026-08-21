@@ -251,7 +251,9 @@ export function openApiDocument() {
             paginate: { type: "boolean", default: false, description: "For GET requests, follow GitHub rel=next links within configured bounds." },
             max_pages: { type: "integer", minimum: 1, maximum: 10, default: 5 },
             max_items: { type: "integer", minimum: 1, maximum: 1000, default: 500 },
-            confirm_mutation: { type: "boolean", default: false, description: "Must be true for POST, PUT, PATCH, or DELETE" },
+            confirm_mutation: { type: "boolean", default: false, description: "Required for generic writes." },
+            confirm_admin_mutation: { type: "boolean", default: false, description: "Required in addition to confirm_mutation for server-enabled admin-class mutations." },
+            confirm_destructive_mutation: { type: "boolean", default: false, description: "Required in addition to confirm_mutation for server-enabled destructive-class mutations." },
           },
         },
         GitHubGraphqlRequest: {
