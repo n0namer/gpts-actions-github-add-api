@@ -18,7 +18,7 @@ import { openApiDocument } from "./openapi.mjs";
 export { GitHubAddError } from "./errors.mjs";
 export { loadConfig } from "./config.mjs";
 export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
-export { scanSecrets, validateAccess } from "./safety.mjs";
+export { scanSecrets, validateAccess, validateRepositoryScope } from "./safety.mjs";
 export {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
