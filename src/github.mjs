@@ -419,6 +419,7 @@ async function githubRestRaw({ method, path: pathname, query = {}, body, token, 
     data,
     request_id: response.headers.get("x-github-request-id") || undefined,
     rate_limit_remaining: response.headers.get("x-ratelimit-remaining") || undefined,
+    link: response.headers.get("link") || undefined,
   };
 }
 
