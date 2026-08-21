@@ -987,7 +987,8 @@ export async function downloadGitHubJobLogs(payload, config) {
   if (first.status !== 302) {
     const data = await boundedResponseBody(first, maxBytes);
     if (!first.ok) githubRestFailure({ status: first.status, data, request_id: first.headers.get("x-github-request-id") || undefined });
-    return { status: "GITHUB_JOB_LOGS_PASS", repository_full_name: repositoryFullName, job_id: jobId, log: typeof data === "string" ? data : JSON.stringify(data), redirect_followed: false, evidence: credential.evidence };
+    const log = redactSensitiveText(typeof data === "string" ? data : JSON.stringify(data));
+    return { status: "GITHUB_JOB_LOGS_PASS", repository_full_name: repositoryFullName, job_id: jobId, log, redirect_followed: false, evidence: credential.evidence };
   }
   const location = first.headers.get("location");
   let target;
