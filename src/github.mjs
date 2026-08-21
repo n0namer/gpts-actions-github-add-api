@@ -735,7 +735,7 @@ export async function githubGraphqlRequest(payload, config) {
     for (const candidate of candidates) {
       const attempt = await githubGraphqlRaw({ query, variables: payload.variables, token: candidate.value, config });
       result = attempt;
-      if (attempt.status !== 401 && attempt.status !== 403) {
+      if (attempt.status !== 401) {
         evidence = { token_env_name: candidate.name };
         break;
       }
