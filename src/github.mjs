@@ -753,3 +753,68 @@ export async function githubRefWriteProbe(payload, config) {
   };
 }
 
+async function resolveOperationalToken(payload, config) {
+  const auth = String(payload?.auth || "user").trim().toLowerCase();
+  if (auth === "installation") {
+    const credential = await resolveInstallationToken(payload, config);
+    return { auth, token: credential.token, evidence: { installation_id: credential.installation_id, token_expires_at: credential.expires_at, permissions: credential.permissions } };
+  }
+  if (auth !== "user") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "auth must be user or installation" });
+  const candidates = tokenCandidates(config);
+  if (candidates.length === 0) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub user token is not configured" });
+  return { auth, token: candidates[0].value, evidence: { token_env_name: candidates[0].name } };
+}
+
+export async function downloadGitHubJobLogs(payload, config) {
+  const repositoryFullName = String(payload?.repository_full_name || "").trim();
+  const { owner, repo } = parseRepository(repositoryFullName);
+  if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryFullName.toLowerCase())) {
+    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+  }
+  const jobId = Number(payload?.job_id);
+  if (!Number.isInteger(jobId) || jobId <= 0) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "job_id must be a positive integer" });
+  const maxBytes = Math.min(Number(payload?.max_bytes || config.githubRestMaxResponseBytes || 2000000), Number(config.githubRestMaxResponseBytes || 2000000));
+  const credential = await resolveOperationalToken({ ...payload, repository_full_name: repositoryFullName }, config);
+  const apiUrl = `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/jobs/${jobId}/logs`;
+  let first;
+  try {
+    first = await fetch(apiUrl, {
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${credential.token}`,
+        "user-agent": "github-file-patch-api",
+        "x-github-api-version": config.githubApiVersion || "2026-03-10",
+      },
+      redirect: "manual",
+    });
+  } catch {
+    throw new GitHubAddError(502, { status: "GITHUB_API_UNAVAILABLE", message: "GitHub job logs request failed at transport layer" });
+  }
+  if (first.status !== 302) {
+    const data = await boundedResponseBody(first, maxBytes);
+    if (!first.ok) githubRestFailure({ status: first.status, data, request_id: first.headers.get("x-github-request-id") || undefined });
+    return { status: "GITHUB_JOB_LOGS_PASS", repository_full_name: repositoryFullName, job_id: jobId, log: typeof data === "string" ? data : JSON.stringify(data), redirect_followed: false, evidence: credential.evidence };
+  }
+  const location = first.headers.get("location");
+  let target;
+  try { target = new URL(String(location || "")); } catch { throw new GitHubAddError(502, { status: "GITHUB_LOG_REDIRECT_INVALID" }); }
+  if (target.protocol !== "https:") throw new GitHubAddError(502, { status: "GITHUB_LOG_REDIRECT_INVALID", reason: "non_https_redirect" });
+  let redirected;
+  try {
+    redirected = await fetch(target, { redirect: "error", headers: { "user-agent": "github-file-patch-api" } });
+  } catch {
+    throw new GitHubAddError(502, { status: "GITHUB_LOG_DOWNLOAD_FAILED" });
+  }
+  const data = await boundedResponseBody(redirected, maxBytes);
+  if (!redirected.ok) throw new GitHubAddError(redirected.status, { status: "GITHUB_LOG_DOWNLOAD_FAILED", github_status: redirected.status });
+  return {
+    status: "GITHUB_JOB_LOGS_PASS",
+    repository_full_name: repositoryFullName,
+    job_id: jobId,
+    log: typeof data === "string" ? data : JSON.stringify(data),
+    redirect_followed: true,
+    bytes: Buffer.byteLength(typeof data === "string" ? data : JSON.stringify(data || "")),
+    evidence: credential.evidence,
+  };
+}
+
