@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { GitHubAddError, normalizeError } from "./errors.mjs";
 import { loadConfig } from "./config.mjs";
 import {
