@@ -500,9 +500,10 @@ async function githubRestRaw({ method, path: pathname, query = {}, body, token, 
 }
 
 function githubRestFailure(result) {
-  const message = typeof result.data === "object" && result.data && typeof result.data.message === "string"
+  const rawMessage = typeof result.data === "object" && result.data && typeof result.data.message === "string"
     ? result.data.message.slice(0, 1200)
     : `GitHub API returned status ${result.status}`;
+  const message = redactSensitiveText(rawMessage);
   throw new GitHubAddError(result.status >= 400 && result.status < 600 ? result.status : 502, {
     status: "GITHUB_REST_FAILED",
     github_status: result.status,
