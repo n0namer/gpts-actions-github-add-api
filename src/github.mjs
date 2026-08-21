@@ -896,6 +896,15 @@ async function resolveOperationalToken(payload, config) {
   return { auth, token: candidates[0].value, evidence: { token_env_name: candidates[0].name } };
 }
 
+function isAllowedLogRedirectHost(hostname, config) {
+  const host = String(hostname || "").toLowerCase().replace(/\.$/, "");
+  const suffixes = Array.isArray(config.githubLogRedirectHostSuffixes) ? config.githubLogRedirectHostSuffixes : [];
+  return suffixes.some((value) => {
+    const suffix = String(value || "").toLowerCase().replace(/^\./, "").replace(/\.$/, "");
+    return suffix && (host === suffix || host.endsWith(`.${suffix}`));
+  });
+}
+
 export async function downloadGitHubJobLogs(payload, config) {
   const repositoryFullName = String(payload?.repository_full_name || "").trim();
   const { owner, repo } = parseRepository(repositoryFullName);
