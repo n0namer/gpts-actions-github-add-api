@@ -115,7 +115,7 @@ Preview diff used exact `<!-- GPT:START smoke-block -->` and `<!-- GPT:END smoke
 
 ### Railway variables
 
-- `ACTION_BEARER_TOKEN`: set (64-char hex, prefix `951b4ae1`).
+- `ACTION_BEARER_TOKEN`: set server-side; value and credential fingerprints are intentionally not recorded.
 - `ACTION_REQUIRE_BEARER`: `true`.
 
 ### Smoke cycle
