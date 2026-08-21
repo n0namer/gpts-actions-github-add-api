@@ -95,6 +95,26 @@ test("static GPT Action JSON parses and exposes the 0.5 control plane", async ()
   assert.ok(doc.components.schemas.GitHubJobLogsRequest);
 });
 
+test("all Action operation descriptions fit the importer 300-character limit", async () => {
+  const raw = await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8");
+  const documents = [
+    ["static", JSON.parse(raw)],
+    ["dynamic", openApiDocument()],
+  ];
+  for (const [label, document] of documents) {
+    for (const [path, pathItem] of Object.entries(document.paths || {})) {
+      for (const method of ["get", "post", "put", "patch", "delete", "head"]) {
+        const operation = pathItem?.[method];
+        if (!operation?.operationId || operation.description == null) continue;
+        assert.ok(
+          operation.description.length <= 300,
+          `${label} ${method.toUpperCase()} ${path} ${operation.operationId} description length ${operation.description.length} exceeds 300`,
+        );
+      }
+    }
+  }
+});
+
 test("static Action JSON stays structurally aligned with dynamic OpenAPI", async () => {
   const raw = await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8");
   const staticDoc = JSON.parse(raw);
