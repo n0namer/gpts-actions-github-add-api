@@ -1,5 +1,26 @@
 # Deployment Report — GitHub Control Plane
 
+## Current server acceptance — 2026-08-21
+
+`SERVER_ACCEPTED` for the server-owned user-token mode on Coolify. GPT Action schema import and post-import Action acceptance are a separate next stage and are not claimed here.
+
+Server evidence:
+
+- Service: `github-file-patch-api` at `https://github-patch.srv1904412.hstgr.cloud`.
+- Branch: `archops/github-control-plane-v05`.
+- Runtime acceptance code baseline: `86a2273df3c07732b405f2006c0e9c480d15b1cf`.
+- Coolify build gate: `npm run check`; the accepted image was created only after this gate succeeded.
+- `/health`: `version=0.5.0`, exact accepted source commit, `github_auth.status=GITHUB_AUTH_OK`.
+- Live control policy: repository scope `allowlist`, two repositories, Bearer required, generic admin/destructive/GraphQL mutations disabled.
+- Live safe read on an allowlisted repository: PASS.
+- Live read on a non-allowlisted repository: `NOT_ALLOWED`.
+- Live patch preview: `DRY_RUN_PASS` with expected-SHA, diff-limit and secret-scan evidence.
+- `/github/rest`, `/github/graphql`, `/github/repository/diagnose`, `/github/ref-write-probe`, and `/github/actions/job-logs` are present in runtime OpenAPI and reject unauthenticated POST requests with HTTP 401.
+- Generic REST/GraphQL policy, redirect, pagination, credential-fallback, ref-cleanup, OpenAPI parity, and secret-redaction regression tests are part of the build gate.
+- GitHub App runtime is intentionally not claimed accepted: App credentials are not configured in this service (`configured=false`).
+
+The direct GitHub connector remains a fallback until the updated Action JSON is imported and the new callable Action surface passes live acceptance.
+
 REQUEST_ID: `GITHUB_ADD_MVP_001`
 
 ## Status
