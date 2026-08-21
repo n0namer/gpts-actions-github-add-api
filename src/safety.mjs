@@ -1,9 +1,19 @@
 import { GitHubAddError } from "./errors.mjs";
 
-export function validateAccess(payload, config) {
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.includes(payload.repository_full_name)) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
+export function validateRepositoryScope(repositoryFullName, config) {
+  const repository = String(repositoryFullName || "").trim();
+  if (config.allowedRepos.length > 0) {
+    if (!config.allowedRepos.some((item) => item.toLowerCase() === repository.toLowerCase())) {
+      throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed", repository_full_name: repository });
+    }
+    return true;
   }
+  if (String(config.githubRepositoryScopeMode || "allowlist").toLowerCase() === "token") return true;
+  throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "Configure GITHUB_ALLOWED_REPOS or explicitly set GITHUB_REPOSITORY_SCOPE_MODE=token" });
+}
+
+export function validateAccess(payload, config) {
+  validateRepositoryScope(payload.repository_full_name, config);
   if (config.allowedBranches.length > 0 && !config.allowedBranches.includes(payload.branch)) {
     throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "branch_not_allowed" });
   }
