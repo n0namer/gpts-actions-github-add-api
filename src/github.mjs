@@ -435,6 +435,46 @@ function githubRestFailure(result) {
   });
 }
 
+function nextPageRequest(linkHeader) {
+  const link = String(linkHeader || "");
+  if (!link) return null;
+  const part = link.split(",").map((item) => item.trim()).find((item) => /;\s*rel="next"(?:\s*;|$)/i.test(item));
+  if (!part) return null;
+  const match = part.match(/^<([^>]+)>/);
+  if (!match) return null;
+  let url;
+  try { url = new URL(match[1]); } catch { throw new GitHubAddError(502, { status: "GITHUB_PAGINATION_LINK_INVALID" }); }
+  if (url.origin !== GITHUB_API_BASE) throw new GitHubAddError(502, { status: "GITHUB_PAGINATION_LINK_INVALID", reason: "unexpected_origin" });
+  const query = {};
+  for (const [key, value] of url.searchParams.entries()) {
+    if (query[key] === undefined) query[key] = value;
+    else if (Array.isArray(query[key])) query[key].push(value);
+    else query[key] = [query[key], value];
+  }
+  return { path: url.pathname, query };
+}
+
+function mergePaginatedData(base, page, maxItems) {
+  if (Array.isArray(base) && Array.isArray(page)) return base.concat(page).slice(0, maxItems);
+  if (!base || !page || typeof base !== "object" || typeof page !== "object" || Array.isArray(base) || Array.isArray(page)) return base;
+  const out = { ...base };
+  let merged = false;
+  for (const key of Object.keys(base)) {
+    if (Array.isArray(base[key]) && Array.isArray(page[key])) {
+      out[key] = base[key].concat(page[key]).slice(0, maxItems);
+      merged = true;
+    }
+  }
+  return merged ? out : base;
+}
+
+function paginatedItemCount(value) {
+  if (Array.isArray(value)) return value.length;
+  if (!value || typeof value !== "object") return 0;
+  const arrays = Object.values(value).filter(Array.isArray);
+  return arrays.length ? Math.max(...arrays.map((items) => items.length)) : 0;
+}
+
 async function resolveInstallationToken(payload, config) {
   const jwt = appJwt(config);
   let installationId = Number(payload.installation_id || 0);
