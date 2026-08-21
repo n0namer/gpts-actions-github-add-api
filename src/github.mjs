@@ -170,8 +170,11 @@ function translatePullRequestError(error, pullNumber) {
   if (githubStatus === 404) {
     throw new GitHubAddError(404, { status: "PULL_REQUEST_NOT_FOUND", pull_number: pullNumber, message });
   }
-  if (githubStatus === 401 || githubStatus === 403) {
+  if (githubStatus === 401) {
     throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub authentication failed", github_status: githubStatus });
+  }
+  if (githubStatus === 403) {
+    throw new GitHubAddError(403, { status: "GITHUB_FORBIDDEN", message, github_status: githubStatus });
   }
   if (githubStatus === 405 || githubStatus === 409 || githubStatus === 422) {
     throw new GitHubAddError(githubStatus, { status: "PULL_REQUEST_OPERATION_BLOCKED", pull_number: pullNumber, github_status: githubStatus, message });
