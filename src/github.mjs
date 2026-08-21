@@ -351,11 +351,16 @@ function normalizeGitHubRestPath(value) {
     throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path must be an absolute canonical GitHub API path without query, fragment, or backslash" });
   }
   if (/^\/https?:/i.test(pathname)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "external URLs are not allowed" });
-  for (const segment of pathname.split("/").slice(1)) {
+  const segments = pathname.split("/").slice(1);
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
     let decoded;
     try { decoded = decodeURIComponent(segment); } catch { throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path contains invalid percent-encoding" }); }
-    if (decoded === "." || decoded === ".." || decoded.includes("/") || decoded.includes("\\") || /[\0\r\n]/.test(decoded)) {
+    if (decoded === "." || decoded === ".." || decoded.includes("\\") || /[\0\r\n]/.test(decoded)) {
       throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path contains a non-canonical segment" });
+    }
+    if (segments[0] && decodeURIComponent(segments[0]).toLowerCase() === "repos" && (index === 1 || index === 2) && decoded.includes("/")) {
+      throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "repository owner and name cannot contain encoded slashes" });
     }
   }
   const canonicalPath = new URL(pathname, GITHUB_API_BASE).pathname;
