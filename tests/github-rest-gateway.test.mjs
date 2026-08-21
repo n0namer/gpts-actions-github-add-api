@@ -119,6 +119,30 @@ test("REST infers repository scope from /repos path and enforces allowlist", asy
   );
 });
 
+test("REST policy rejects normalization tricks and decodes paths before scope and risk checks", async () => {
+  const config = { ...baseConfig, allowedRepos: ["n0namer/allowed"] };
+  for (const path of [
+    "/repos/n0namer/allowed/../../user",
+    "/repos/n0namer/allowed/%2e%2e/%2e%2e/user",
+    "/repos/n0namer/allowed\\..\\..\\user",
+    "/repos/n0namer/allowed?x=1",
+    "/repos/n0namer%2Fother/allowed",
+  ]) {
+    await assert.rejects(
+      githubRestRequest({ method: "GET", path }, config),
+      (error) => error?.payload?.status === "BAD_REQUEST" && error?.httpStatus === 400,
+    );
+  }
+  await assert.rejects(
+    githubRestRequest({ method: "GET", path: "/re%70os/n0namer/forbidden" }, config),
+    (error) => error?.payload?.status === "NOT_ALLOWED" && error?.payload?.repository_full_name === "n0namer/forbidden",
+  );
+  await assert.rejects(
+    githubRestRequest({ method: "PATCH", path: "/re%70os/n0namer/allowed/r%75lesets/1", confirm_mutation: true }, config),
+    (error) => error?.payload?.status === "ADMIN_MUTATION_DISABLED" && error?.payload?.mutation_class === "admin",
+  );
+});
+
 test("all control-plane routes dispatch through injected backends", async () => {
   const handler = createRequestHandler({
     config: baseConfig,
