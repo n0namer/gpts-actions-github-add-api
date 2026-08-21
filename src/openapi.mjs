@@ -49,6 +49,38 @@ export function openApiDocument() {
           },
         },
       },
+      "/github/rest": {
+        post: {
+          operationId: "githubRest",
+          summary: "Call any GitHub REST API path through the server-owned credential gateway",
+          description: "Use concrete REST paths from the official github/rest-api-description. GET/HEAD are read-only. POST/PUT/PATCH/DELETE require confirm_mutation=true. auth=user uses the configured server PAT/token; auth=app signs a short-lived GitHub App JWT; auth=installation resolves or uses an installation ID and mints an installation token server-side. Tokens and common secret fields are never returned.",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubRestRequest" } } } },
+          responses: {
+            "200": { description: "GitHub REST request succeeded with bounded/redacted response" },
+            "400": { description: "Invalid method, path, query, or auth mode" },
+            "401": { description: "GitHub authentication failed" },
+            "403": { description: "GitHub or repository policy denied the operation" },
+            "409": { description: "Mutation confirmation required" },
+            "502": { description: "GitHub API unavailable, failed, or response too large" },
+            "503": { description: "Requested GitHub App authentication is not configured" },
+          },
+        },
+      },
+      "/github/app/diagnose": {
+        post: {
+          operationId: "diagnoseGitHubAppRepository",
+          summary: "Diagnose GitHub App installation, permissions, token mint, and repository access",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubAppDiagnoseRequest" } } } },
+          responses: {
+            "200": { description: "GitHub App and repository installation are usable" },
+            "403": { description: "Repository policy or GitHub App permissions denied access" },
+            "404": { description: "No installation is available for the repository" },
+            "503": { description: "GitHub App credentials are not configured or private key is invalid" },
+          },
+        },
+      },
       "/file/read": {
         post: {
           operationId: "readFile",
