@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server.mjs && node --test tests/*.test.mjs"
+    "check": "node --check src/server.mjs && node --check src/github.mjs && node --check src/openapi.mjs && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@octokit/rest": "^21.1.1",
