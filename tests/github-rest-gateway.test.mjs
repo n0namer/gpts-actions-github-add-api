@@ -95,6 +95,36 @@ test("static GPT Action JSON parses and exposes the 0.5 control plane", async ()
   assert.ok(doc.components.schemas.GitHubJobLogsRequest);
 });
 
+test("static Action JSON stays structurally aligned with dynamic OpenAPI", async () => {
+  const raw = await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8");
+  const staticDoc = JSON.parse(raw);
+  const dynamicDoc = openApiDocument();
+  const staticIds = operationIds(staticDoc);
+  const dynamicIds = operationIds(dynamicDoc);
+  assert.equal(new Set(staticIds).size, staticIds.length, "static operationId values must be unique");
+  assert.equal(new Set(dynamicIds).size, dynamicIds.length, "dynamic operationId values must be unique");
+  assert.deepEqual([...staticIds].sort(), [...dynamicIds].sort());
+
+  for (const ref of collectRefs(staticDoc)) {
+    const prefix = "#/components/schemas/";
+    assert.ok(ref.startsWith(prefix), `unsupported static ref ${ref}`);
+    assert.ok(staticDoc.components.schemas[ref.slice(prefix.length)], `missing static schema ${ref}`);
+  }
+
+  for (const name of ["GitHubRestRequest", "GitHubGraphqlRequest", "GitHubRepositoryDiagnoseRequest", "GitHubRefWriteProbeRequest", "GitHubJobLogsRequest", "GitHubAppDiagnoseRequest"]) {
+    const a = staticDoc.components.schemas[name];
+    const b = dynamicDoc.components.schemas[name];
+    assert.ok(a && b, `missing control-plane schema ${name}`);
+    assert.deepEqual(Object.keys(a.properties || {}).sort(), Object.keys(b.properties || {}).sort(), `${name} property drift`);
+    assert.deepEqual([...(a.required || [])].sort(), [...(b.required || [])].sort(), `${name} required-field drift`);
+  }
+
+  for (const path of ["/github/rest", "/github/graphql", "/github/ref-write-probe", "/file/create", "/patch/apply", "/pull-request/ready", "/pull-request/merge"]) {
+    assert.equal(staticDoc.paths[path].post["x-openai-isConsequential"], true, `${path} must be consequential in static JSON`);
+    assert.equal(dynamicDoc.paths[path].post["x-openai-isConsequential"], true, `${path} must be consequential in dynamic OpenAPI`);
+  }
+});
+
 test("generic mutation policy fails closed by class", async () => {
   await assert.rejects(
     githubRestRequest({ method: "POST", path: "/repos/n0namer/gpt-coding-station/issues" }, baseConfig),
