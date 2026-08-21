@@ -266,6 +266,7 @@ export function openApiDocument() {
             repository_full_name: { type: "string", description: "Optional repository policy scope and installation resolver." },
             installation_id: { type: "integer", minimum: 1 },
             confirm_mutation: { type: "boolean", default: false },
+            confirm_admin_mutation: { type: "boolean", default: false, description: "Required for server-enabled GraphQL mutations." },
           },
         },
         GitHubRepositoryDiagnoseRequest: {
