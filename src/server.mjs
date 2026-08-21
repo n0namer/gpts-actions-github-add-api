@@ -51,9 +51,9 @@ async function healthPayload(config) {
   const payload = {
     status: "ok",
     service: "github-file-patch-api",
-    version: "0.4.0",
+    version: "0.5.0",
     source_commit: process.env.SOURCE_COMMIT || "",
-    capabilities: ["file_read", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge", "github_rest", "github_app_diagnose"],
+    capabilities: ["file_read", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge", "github_rest", "github_graphql", "github_app_diagnose", "repository_diagnose", "ref_write_probe", "actions_job_logs"],
     github_token_runtime: tokenRuntimeDiagnostics(config),
     github_app_runtime: {
       configured: Boolean(config.githubAppId && config.githubAppPrivateKey),
