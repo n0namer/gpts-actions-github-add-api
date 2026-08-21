@@ -309,7 +309,9 @@ const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SECRET_RESPONSE_KEYS = /^(?:token|access_token|refresh_token|secret|client_secret|password|private_key|authorization)$/i;
 
 const SECRET_BEARING_MUTATION_PATH = /\/secrets(?:\/|$)/i;
-const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/(?:collaborators|actions\/permissions|environments|rulesets|branches\/.+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis)(?:\/|$)/i;
+const ADMIN_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+(?:$|\/(?:collaborators|actions\/(?:permissions|runners|variables|workflows\/.+\/dispatches)|dispatches|environments|rulesets|branches\/.+\/protection|hooks|interaction-limits|automated-security-fixes|private-vulnerability-reporting|security-and-analysis|keys|deployments|releases|pages|vulnerability-alerts)(?:\/|$))/i;
+const DESTRUCTIVE_REPOSITORY_MUTATION_PATH = /^\/repos\/[^/]+\/[^/]+\/transfer(?:\/|$)/i;
+const GIT_REF_UPDATE_PATH = /^\/repos\/[^/]+\/[^/]+\/git\/refs\//i;
 const PROBE_REF_DELETE_PATH = /^\/repos\/[^/]+\/[^/]+\/git\/refs\/heads\/station\/probe\/[A-Za-z0-9._/-]+$/i;
 
 function decodeGitHubPathForPolicy(pathname) {
