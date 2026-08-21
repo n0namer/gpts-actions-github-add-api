@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
 import { once } from "node:events";
 import test from "node:test";
 import { githubGraphqlRequest, githubRestRequest } from "../src/github.mjs";
