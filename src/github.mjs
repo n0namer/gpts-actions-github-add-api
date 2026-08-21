@@ -822,9 +822,7 @@ async function diagnosticRest(payload, config) {
 export async function diagnoseGitHubRepositoryControlPlane(payload, config) {
   const repositoryFullName = String(payload?.repository_full_name || "").trim();
   const { owner, repo } = parseRepository(repositoryFullName);
-  if (config.allowedRepos.length > 0 && !config.allowedRepos.some((item) => item.toLowerCase() === repositoryFullName.toLowerCase())) {
-    throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed" });
-  }
+  validateRepositoryScope(repositoryFullName, config);
   const auth = String(payload?.auth || "user").trim().toLowerCase();
   if (!new Set(["user", "installation"]).has(auth)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "diagnostic auth must be user or installation" });
   const base = { auth, repository_full_name: repositoryFullName, installation_id: payload?.installation_id };
