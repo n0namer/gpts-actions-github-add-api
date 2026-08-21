@@ -617,6 +617,9 @@ export async function githubRestRequest(payload, config) {
       const page = await githubRestRaw({ method: "GET", path: next.path, query: next.query, token: authToken, config });
       if (!page.ok) githubRestFailure(page);
       mergedData = mergePaginatedData(mergedData, page.data, maxItemsRaw);
+      if (serializedJsonBytes(mergedData) > Number(config.githubRestMaxResponseBytes || 2000000)) {
+        throw new GitHubAddError(502, { status: "GITHUB_RESPONSE_TOO_LARGE", max_response_bytes: Number(config.githubRestMaxResponseBytes || 2000000), reason: "cumulative_pagination" });
+      }
       pages += 1;
       result = page;
       next = nextPageRequest(page.link);
