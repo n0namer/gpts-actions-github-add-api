@@ -71,7 +71,7 @@ export function openApiDocument() {
         post: {
           operationId: "githubGraphql",
           summary: "Call GitHub GraphQL with server-owned user or installation credentials",
-          description: "Bounded GraphQL gateway. Queries are read-only by default; GraphQL mutations require confirm_mutation=true. Installation credentials are minted server-side and never returned.",
+          description: "Bounded GraphQL gateway. Queries are allowed. Generic GraphQL mutations are disabled by default; when server-enabled they require confirm_mutation=true and confirm_admin_mutation=true. With a repository allowlist, GraphQL user-token auth is blocked because the query cannot be safely constrained to the declared repository; use installation auth instead. Installation credentials are minted server-side and never returned.",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GitHubGraphqlRequest" } } } },
           responses: { "200": { description: "GraphQL request succeeded" }, "400": { description: "Invalid GraphQL request" }, "409": { description: "Mutation confirmation required" }, "502": { description: "GitHub GraphQL request failed" } },
