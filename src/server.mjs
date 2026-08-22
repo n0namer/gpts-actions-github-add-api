@@ -37,7 +37,7 @@ async function healthPayload() {
     service: "github-file-patch-api",
     version: "0.3.0",
     source_commit: process.env.SOURCE_COMMIT || "",
-    capabilities: ["file_read", "file_create", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge", "github_rest", "github_graphql"],
+    capabilities: ["file_read", "file_create", "patch_preview", "patch_apply", "pull_request_read", "pull_request_ready", "pull_request_merge", "github_rest", "github_graphql", "github_rest_paginated", "github_batch_read", "github_rate_limit", "github_capabilities", "github_auth_diagnose", "github_pr_dossier", "github_checks"],
   };
 }
 
