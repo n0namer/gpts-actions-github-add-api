@@ -297,3 +297,95 @@ export async function checkGitHubAuth(payload, config) {
     return result;
   });
 }
+
+function normalizeRestMethod(value) {
+  const method = String(value || "GET").toUpperCase();
+  if (!["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "unsupported GitHub REST method" });
+  }
+  return method;
+}
+
+function normalizeGitHubPath(value) {
+  const path = String(value || "");
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("://") || path.includes("\\")) {
+    throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path must be an absolute canonical GitHub API path" });
+  }
+  if (path.includes("#")) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "path must not contain a fragment" });
+  return path;
+}
+
+function requiresAdminConfirmation(path) {
+  return /(?:\/collaborators(?:\/|$)|\/branches\/[^/]+\/protection(?:\/|$)|\/actions\/permissions(?:\/|$)|\/hooks(?:\/|$)|\/rulesets(?:\/|$)|\/environments(?:\/|$))/i.test(path);
+}
+
+function requiresDestructiveConfirmation(method, path) {
+  return method === "DELETE" || /(?:\/transfer$|\/archive$)/i.test(path);
+}
+
+function assertGenericMutationAllowed(payload, method, path) {
+  if (["GET", "HEAD"].includes(method)) return;
+  if (payload.confirm_mutation !== true) {
+    throw new GitHubAddError(403, { status: "CONFIRMATION_REQUIRED", reason: "confirm_mutation_required" });
+  }
+  if (requiresAdminConfirmation(path) && payload.confirm_admin_mutation !== true) {
+    throw new GitHubAddError(403, { status: "CONFIRMATION_REQUIRED", reason: "confirm_admin_mutation_required" });
+  }
+  if (requiresDestructiveConfirmation(method, path) && payload.confirm_destructive_mutation !== true) {
+    throw new GitHubAddError(403, { status: "CONFIRMATION_REQUIRED", reason: "confirm_destructive_mutation_required" });
+  }
+}
+
+function safeResponseHeaders(headers = {}) {
+  const names = ["x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset", "x-github-api-version-selected", "x-accepted-github-permissions", "location", "link", "etag"];
+  return Object.fromEntries(names.filter((name) => headers[name] !== undefined).map((name) => [name, headers[name]]));
+}
+
+export async function requestGitHubRest(payload, config) {
+  const method = normalizeRestMethod(payload?.method);
+  const path = normalizeGitHubPath(payload?.path);
+  assertGenericMutationAllowed(payload || {}, method, path);
+  const query = payload?.query && typeof payload.query === "object" ? payload.query : {};
+  const body = payload?.body;
+
+  return withGitHubAuth(config, async (octokit) => {
+    const response = await octokit.request({
+      method,
+      url: path,
+      ...query,
+      ...(body !== undefined ? { data: body } : {}),
+    });
+    return {
+      status: "GITHUB_REST_PASS",
+      github_status: response.status,
+      method,
+      path,
+      headers: safeResponseHeaders(response.headers),
+      data: response.data,
+    };
+  });
+}
+
+function graphqlOperationType(query) {
+  const cleaned = String(query || "").replace(/^\s*(?:#[^\n]*\n\s*)*/, "");
+  return /^mutation\b/i.test(cleaned) ? "mutation" : "query";
+}
+
+export async function requestGitHubGraphql(payload, config) {
+  const query = String(payload?.query || "");
+  if (!query.trim()) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "query is required" });
+  if (query.length > 100000) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "GraphQL query is too large" });
+  const operationType = graphqlOperationType(query);
+  if (operationType === "mutation" && payload.confirm_mutation !== true) {
+    throw new GitHubAddError(403, { status: "CONFIRMATION_REQUIRED", reason: "confirm_mutation_required" });
+  }
+  if (operationType === "mutation" && payload.confirm_admin_mutation !== true) {
+    throw new GitHubAddError(403, { status: "CONFIRMATION_REQUIRED", reason: "confirm_admin_mutation_required" });
+  }
+  const variables = payload?.variables && typeof payload.variables === "object" ? payload.variables : {};
+  return withGitHubAuth(config, async (octokit) => ({
+    status: "GITHUB_GRAPHQL_PASS",
+    operation_type: operationType,
+    data: await octokit.graphql(query, variables),
+  }));
+}
