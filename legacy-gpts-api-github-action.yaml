@@ -1065,6 +1065,16 @@ paths:
         "200": { description: Latest release. }
 
   /repos/{owner}/{repo}/releases/{release_id}:
+    get:
+      operationId: release_get
+      summary: Get a release
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: release_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Release. }
     patch:
       operationId: release_update
       summary: Update a release
