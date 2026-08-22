@@ -3437,7 +3437,7 @@ components:
 
 x-safety-notes:
   - No delete file endpoint.
-  - No merge pull request endpoint.
+  - Pull request merge is available only through the guarded merge endpoint.
   - No force update ref endpoint.
   - No repository settings, secrets, collaborators, permissions, or branch protection mutation endpoints.
   - File writes require an explicit branch.
