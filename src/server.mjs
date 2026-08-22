@@ -422,6 +422,7 @@ export function createRequestHandler(options = {}) {
     githubGraphql: options.githubGraphql || githubGraphqlRequest,
     searchAllowedRepositories: options.searchAllowedRepositories || searchAllowedGitHubRepositories,
     searchRepositoryCode: options.searchRepositoryCode || searchGitHubRepositoryCode,
+    createRepository: options.createRepository || createGitHubRepository,
     diagnoseGitHubApp: options.diagnoseGitHubApp || diagnoseGitHubAppRepository,
     diagnoseRepository: options.diagnoseRepository || diagnoseGitHubRepositoryControlPlane,
     refWriteProbe: options.refWriteProbe || githubRefWriteProbe,
