@@ -1644,18 +1644,6 @@ paths:
                 $ref: "#/components/schemas/GitHubError"
 
   /repos/{owner}/{repo}/pulls/{pull_number}/reviews:
-    get:
-      operationId: reviews_list
-      summary: List pull request reviews
-      tags: [pulls]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
-        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
-        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
-      responses:
-        "200": { description: Pull request reviews. }
     post:
       operationId: pulls_submit_review
       summary: Submit pull request review
