@@ -268,6 +268,22 @@ test("REST infers repository scope from /repos path and enforces allowlist", asy
   );
 });
 
+test("token repository scope ignores stale allowlist entries", async () => {
+  const config = {
+    ...baseConfig,
+    githubRepositoryScopeMode: "token",
+    allowedRepos: ["n0namer/old-restricted-repo"],
+    githubTokenCandidates: [{ name: "TOKEN", value: "token" }],
+  };
+  let requestedPath = null;
+  const result = await withMockFetch(async (input) => {
+    requestedPath = new URL(String(input)).pathname;
+    return new Response(JSON.stringify({ full_name: "octocat/Hello-World" }), { status: 200 });
+  }, () => githubRestRequest({ method: "GET", path: "/repos/octocat/Hello-World" }, config));
+  assert.equal(requestedPath, "/repos/octocat/Hello-World");
+  assert.equal(result.status, "GITHUB_REST_PASS");
+});
+
 test("repository scope defaults fail closed for generic REST and GraphQL", async () => {
   const locked = { ...baseConfig, githubRepositoryScopeMode: "allowlist", allowedRepos: [] };
   await assert.rejects(
