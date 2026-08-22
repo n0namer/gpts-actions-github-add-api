@@ -25,9 +25,237 @@ tags:
   - name: actions
 
 paths:
+  /rate_limit:
+    get:
+      operationId: rate_limit_get
+      summary: Get API rate limits
+      description: Returns current REST and GraphQL rate limit state for the authenticated credential.
+      tags: [meta]
+      responses:
+        "200": { description: Rate limit state. }
+
+  /repos/{owner}/{repo}/rulesets:
+    get:
+      operationId: rulesets_list
+      summary: List repository rulesets
+      description: Lists repository rulesets that can affect pushes, branches, tags, and pull requests.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Repository rulesets. }
+
+  /repos/{owner}/{repo}/branches/{branch}/protection:
+    get:
+      operationId: branch_protection_get
+      summary: Get branch protection
+      description: Returns protection settings for a branch, including required checks and review rules when visible to the credential.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: branch, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Branch protection settings. }
+        "404": { description: Branch or protection not found. }
+
+  /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches:
+    post:
+      operationId: workflow_dispatch
+      summary: Dispatch a workflow
+      description: Triggers a workflow_dispatch workflow on a branch or tag with optional input values.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: workflow_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ref]
+              additionalProperties: false
+              properties:
+                ref: { type: string }
+                inputs: { type: object, additionalProperties: true }
+      responses:
+        "204": { description: Workflow dispatch accepted. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/rerun:
+    post:
+      operationId: workflow_rerun
+      summary: Re-run a workflow
+      description: Re-runs all jobs in an existing GitHub Actions workflow run.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "201": { description: Re-run requested. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/cancel:
+    post:
+      operationId: workflow_cancel
+      summary: Cancel a workflow run
+      description: Requests cancellation of an in-progress GitHub Actions workflow run.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "202": { description: Cancellation requested. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/releases:
+    get:
+      operationId: releases_list
+      summary: List releases
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Releases. }
+    post:
+      operationId: release_create
+      summary: Create a release
+      description: Creates a release from a tag or target commitish. Can create drafts and prereleases.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag_name]
+              additionalProperties: false
+              properties:
+                tag_name: { type: string }
+                target_commitish: { type: string }
+                name: { type: string }
+                body: { type: string }
+                draft: { type: boolean, default: false }
+                prerelease: { type: boolean, default: false }
+                generate_release_notes: { type: boolean, default: false }
+      responses:
+        "201": { description: Release created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/releases/latest:
+    get:
+      operationId: release_latest_get
+      summary: Get latest release
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Latest release. }
+
+  /repos/{owner}/{repo}/releases/{release_id}:
+    patch:
+      operationId: release_update
+      summary: Update a release
+      description: Updates release metadata such as tag, name, body, draft state, or prerelease state.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: release_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                tag_name: { type: string }
+                target_commitish: { type: string }
+                name: { type: string }
+                body: { type: string }
+                draft: { type: boolean }
+                prerelease: { type: boolean }
+      responses:
+        "200": { description: Release updated. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/tags:
+    get:
+      operationId: tags_list
+      summary: List repository tags
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Repository tags. }
+
+  /repos/{owner}/{repo}/issues/{issue_number}:
+    patch:
+      operationId: issue_update
+      summary: Update an issue
+      description: Updates issue title, body, state, labels, assignees, or milestone. Pull requests are issues too, but use pull_update for PR-specific fields.
+      tags: [issues]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: issue_number, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200": { description: Issue updated. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/pulls/{pull_number}:
+    patch:
+      operationId: pull_update
+      summary: Update a pull request
+      description: Updates pull request title, body, state, base branch, or maintainer modification setting.
+      tags: [pulls]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: pull_number, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                title: { type: string }
+                body: { type: string }
+                state: { type: string, enum: [open, closed] }
+                base: { type: string }
+                maintainer_can_modify: { type: boolean }
+      responses:
+        "200": { description: Pull request updated. }
+      x-openai-isConsequential: true
+
   /graphql:
     post:
-      operationId: github_graphql
+      operationId: graphql
       summary: Execute a GitHub GraphQL operation
       description: Executes GitHub GraphQL with the configured token. Supports queries and mutations allowed by that token. Treat mutations as consequential.
       tags: [graphql]
