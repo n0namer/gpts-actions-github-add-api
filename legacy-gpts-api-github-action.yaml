@@ -3245,7 +3245,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of review comments.
