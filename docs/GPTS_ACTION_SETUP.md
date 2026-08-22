@@ -1,11 +1,12 @@
 # GPTS Action Setup — GitHub ADD
 
-Status: `PLANNED / BLOCKED_BY_UI` until the GPT Builder action is imported and verified from the GPT UI.
+Status: `READY_FOR_REIMPORT / CURRENT_CHAT_SCHEMA_STALE` until the updated Action schema is imported and verified in a fresh GPT session.
 
 ## Source of truth
 
-- Service domain: `https://github-add-api-production.up.railway.app`
-- OpenAPI schema: `https://github-add-api-production.up.railway.app/openapi.json`
+- Service domain: `https://github-patch.srv1904412.hstgr.cloud`
+- Live OpenAPI schema: `https://github-patch.srv1904412.hstgr.cloud/openapi.json`
+- Static GPT import schema: `gpts-action-openapi.json`
 - Backend evidence: `docs/DEPLOYMENT_REPORT.md`
 - Task ledger: `docs/TASKS.yaml`
 
