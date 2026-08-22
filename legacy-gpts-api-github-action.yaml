@@ -26,6 +26,75 @@ tags:
   - name: actions
 
 paths:
+  /repos/{owner}/{repo}/pulls/{pull_number}/merge:
+    put:
+      operationId: pulls_merge
+      summary: Merge a pull request
+      description: >
+        Merges a pull request using GitHub's native merge endpoint. Supply the
+        expected PR head SHA to guard against merging a pull request that changed
+        after it was reviewed. This is a consequential operation.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: repo
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: pull_number
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: Accept
+          in: header
+          required: false
+          schema: { type: string, default: application/vnd.github+json }
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          schema: { type: string, default: "2026-03-10" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sha]
+              properties:
+                sha:
+                  type: string
+                  minLength: 40
+                  maxLength: 64
+                  description: Expected SHA of the pull request head; merge fails if the PR changed.
+                merge_method:
+                  type: string
+                  enum: [merge, squash, rebase]
+                  default: merge
+                commit_title: { type: string }
+                commit_message: { type: string }
+      responses:
+        "200":
+          description: Pull request merge result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sha: { type: string }
+                  merged: { type: boolean }
+                  message: { type: string }
+        "403": { description: Forbidden or insufficient repository permission. }
+        "404": { description: Repository or pull request not found. }
+        "405": { description: Pull request cannot be merged. }
+        "409": { description: Merge conflict or head SHA mismatch. }
+        "422": { description: Validation failed. }
+      x-openai-isConsequential: true
+
   /user:
     get:
       operationId: users_get_authenticated
