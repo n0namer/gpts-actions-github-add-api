@@ -862,7 +862,7 @@ export async function searchGitHubRepositoryCode(payload, config) {
     data: { total_count: items.length, incomplete_results: Boolean(result.data?.incomplete_results), items: redactGitHubResponse(items) },
     request_id: result.request_id,
     rate_limit_remaining: result.rate_limit_remaining,
-    evidence: { credential_mode: "user_token", repository_scope: "allowlist" },
+    evidence: { credential_mode: "user_token", repository_scope: scopeMode },
   };
 }
 
