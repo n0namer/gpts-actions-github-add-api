@@ -2,7 +2,7 @@ import { GitHubAddError } from "./errors.mjs";
 
 export function validateRepositoryScope(repositoryFullName, config) {
   const repository = String(repositoryFullName || "").trim();
-  const scopeMode = String(config.githubRepositoryScopeMode || "token").toLowerCase();
+  const scopeMode = String(config.githubRepositoryScopeMode || "allowlist").toLowerCase();
   if (scopeMode === "token") return true;
   if (config.allowedRepos.length > 0) {
     if (!config.allowedRepos.some((item) => item.toLowerCase() === repository.toLowerCase())) {
