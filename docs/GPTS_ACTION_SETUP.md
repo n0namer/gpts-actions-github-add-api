@@ -89,7 +89,7 @@ Required flow:
 After the GPTS action smoke passes, the first useful write-back should update only the marker block below through GitHub ADD.
 
 <!-- GPT:START gpts-action-status -->
-GPTS Action import is not yet verified from GPT Builder UI.
+Server runtime is verified in token-wide scope; GPT Builder still needs the updated schema re-imported and verified in a fresh session.
 <!-- GPT:END gpts-action-status -->
 
 ## Acceptance rules
