@@ -70,6 +70,9 @@ for url,item in paths.items():
             if q is None: issues.append(('MISSING_PATH_PARAMETER',f'$.paths.{url}.{method}',var))
             elif q.get('required') is not True: issues.append(('PATH_PARAMETER_NOT_REQUIRED',f'$.paths.{url}.{method}',var))
 
+if len(ops)>30: issues.append(('OPERATION_LIMIT','$.paths',f'{len(ops)} > 30'))
+if not any(oid=='graphql' for oid,_,_ in ops): issues.append(('REQUIRED_OPERATION_MISSING','$.paths','graphql'))
+
 seen={}
 for oid,url,method in ops:
     if oid in seen: issues.append(('DUPLICATE_OPERATION_ID',oid,f'{seen[oid]} vs {method.upper()} {url}'))
