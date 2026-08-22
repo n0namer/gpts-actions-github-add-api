@@ -45,9 +45,13 @@ POST /pull-request/ready
 POST /pull-request/merge
 ```
 
-`/github/rest` is the universal fallback for official GitHub REST paths. It supports server-owned user-token, GitHub App JWT, and short-lived installation-token authentication. Repository scope is inferred from `/repos/{owner}/{repo}` paths and checked against the local allowlist.
+`/github/rest` is the universal fallback for official GitHub REST paths. It supports server-owned user-token, GitHub App JWT, and short-lived installation-token authentication. The default repository scope is `token`, so any repository accessible to the configured credential can be used without pre-registering it in an allowlist.
 
-`/github/graphql` is the GraphQL fallback. Mutations require explicit confirmation. When a repository allowlist is configured, GraphQL calls require an explicit `repository_full_name` policy scope.
+`/github/search/repositories` and `/github/search/code` provide bounded read-only discovery across that credential scope. Restricted deployments may still opt into explicit allowlist mode.
+
+`/github/repositories/create` creates a new repository for the authenticated user or an organization, requires `confirm_mutation=true`, and verifies the created repository with a GitHub reread.
+
+`/github/graphql` is the GraphQL fallback. Read queries use the configured credential scope. GraphQL mutations remain disabled by default and require explicit mutation/admin gates if a deployment intentionally enables them.
 
 ## GitHub App model
 
