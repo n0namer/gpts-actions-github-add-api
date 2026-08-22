@@ -112,19 +112,6 @@ paths:
         "201": { description: Annotated tag created. }
       x-openai-isConsequential: true
 
-  /repos/{owner}/{repo}/compare/{basehead}:
-    get:
-      operationId: commits_compare
-      summary: Compare two commits
-      description: Compares commits, branches, or tags using BASE...HEAD syntax.
-      tags: [repos]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: basehead, in: path, required: true, schema: { type: string } }
-      responses:
-        "200": { description: Commit comparison. }
-
   /repos/{owner}/{repo}/pulls/{pull_number}/commits:
     get:
       operationId: pull_commits_list
