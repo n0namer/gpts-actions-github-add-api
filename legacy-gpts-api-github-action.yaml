@@ -2130,6 +2130,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/GitHubError"
 
+  /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches:
+    post:
+      operationId: workflow_dispatch
+      summary: Dispatch a workflow
+      description: Triggers a workflow_dispatch workflow on a branch or tag with optional inputs.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: workflow_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ref]
+              properties:
+                ref: { type: string }
+                inputs: { type: object, additionalProperties: true }
+      responses:
+        "204": { description: Workflow dispatched. }
+      x-openai-isConsequential: true
+
   /graphql:
     post:
       operationId: graphql
