@@ -89,8 +89,8 @@ export function openApiDocument() {
       "/github/search/code": {
         post: {
           operationId: "searchGitHubCode",
-          summary: "Search code inside one allowlisted repository",
-          description: "Read-only code search. repository_full_name must be allowlisted; repo/org/user qualifiers and OR are rejected because scope is server-controlled.",
+          summary: "Search code inside a repository accessible to the configured GitHub credential",
+          description: "Read-only code search. In token mode repository_full_name may be any repository accessible to the configured credential; allowlist mode remains available for restricted deployments.",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: {
             type: "object",
