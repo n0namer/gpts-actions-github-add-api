@@ -389,3 +389,129 @@ export async function requestGitHubGraphql(payload, config) {
     data: await octokit.graphql(query, variables),
   }));
 }
+
+export async function getGitHubRateLimit(payload, config) {
+  return withGitHubAuth(config, async (octokit) => {
+    const response = await octokit.rateLimit.get();
+    return { status: "GITHUB_RATE_LIMIT_PASS", resources: response.data.resources, rate: response.data.rate };
+  });
+}
+
+export async function getGitHubCapabilities(payload, config) {
+  return withGitHubAuth(config, async (octokit, candidate) => {
+    const user = await octokit.users.getAuthenticated();
+    const rate = await octokit.rateLimit.get();
+    const result = {
+      status: "GITHUB_CAPABILITIES_PASS",
+      login: user.data.login,
+      token_env_name: candidate.name,
+      graphql: true,
+      generic_rest: true,
+      rate: rate.data.rate,
+    };
+    if (payload?.repository_full_name) {
+      const { owner, repo } = parseRepository(payload.repository_full_name);
+      const repository = await octokit.repos.get({ owner, repo });
+      result.repository_full_name = `${owner}/${repo}`;
+      result.repository_permissions = repository.data.permissions || undefined;
+      result.default_branch = repository.data.default_branch;
+      result.private = repository.data.private;
+    }
+    return result;
+  });
+}
+
+export async function requestGitHubRestPaginated(payload, config) {
+  const method = normalizeRestMethod(payload?.method || "GET");
+  if (method !== "GET") throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "paginated REST supports GET only" });
+  const path = normalizeGitHubPath(payload?.path);
+  const query = payload?.query && typeof payload.query === "object" ? payload.query : {};
+  const maxPages = Math.max(1, Math.min(Number(payload?.max_pages || 5), 10));
+  const maxItems = Math.max(1, Math.min(Number(payload?.max_items || 500), 1000));
+  return withGitHubAuth(config, async (octokit) => {
+    const items = [];
+    let page = Number(query.page || 1);
+    let pagesFetched = 0;
+    while (pagesFetched < maxPages && items.length < maxItems) {
+      const perPage = Math.min(Number(query.per_page || 100), 100);
+      const response = await octokit.request({ method: "GET", url: path, ...query, page, per_page: perPage });
+      const data = response.data;
+      const batch = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+      items.push(...batch.slice(0, maxItems - items.length));
+      pagesFetched += 1;
+      if (batch.length === 0 || batch.length < perPage) break;
+      page += 1;
+    }
+    return { status: "GITHUB_REST_PAGINATED_PASS", path, pages_fetched: pagesFetched, item_count: items.length, items };
+  });
+}
+
+export async function batchGitHubRead(payload, config) {
+  const requests = Array.isArray(payload?.requests) ? payload.requests : [];
+  if (requests.length === 0 || requests.length > 20) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "requests must contain 1 to 20 items" });
+  return withGitHubAuth(config, async (octokit) => {
+    const results = [];
+    for (const request of requests) {
+      const path = normalizeGitHubPath(request?.path);
+      try {
+        const response = await octokit.request({ method: "GET", url: path, ...(request?.query || {}) });
+        results.push({ ok: true, path, github_status: response.status, data: response.data });
+      } catch (error) {
+        results.push({ ok: false, path, github_status: error?.status, message: error?.response?.data?.message || error?.message });
+      }
+    }
+    return { status: "GITHUB_BATCH_READ_PASS", result_count: results.length, results };
+  });
+}
+
+export async function diagnoseGitHubAuth(payload, config) {
+  try {
+    const capabilities = await getGitHubCapabilities(payload, config);
+    return { status: "GITHUB_AUTH_DIAGNOSE_PASS", ...capabilities };
+  } catch (error) {
+    return {
+      status: "GITHUB_AUTH_DIAGNOSE_FAIL",
+      github_status: error?.status,
+      message: error?.response?.data?.message || error?.message,
+      accepted_permissions: error?.response?.headers?.["x-accepted-github-permissions"],
+    };
+  }
+}
+
+export async function getPullRequestDossier(payload, config) {
+  const { owner, repo } = parseRepository(payload.repository_full_name);
+  const pullNumber = normalizePullNumber(payload.pull_number);
+  return withGitHubAuth(config, async (octokit) => {
+    const [pr, files, reviews] = await Promise.all([
+      octokit.pulls.get({ owner, repo, pull_number: pullNumber }),
+      octokit.pulls.listFiles({ owner, repo, pull_number: pullNumber, per_page: 100 }),
+      octokit.pulls.listReviews({ owner, repo, pull_number: pullNumber, per_page: 100 }),
+    ]);
+    const headSha = pr.data.head?.sha;
+    const [checkResponse, statusResponse] = headSha ? await Promise.all([
+      octokit.checks.listForRef({ owner, repo, ref: headSha, per_page: 100 }),
+      octokit.repos.getCombinedStatusForRef({ owner, repo, ref: headSha }),
+    ]) : [null, null];
+    return {
+      status: "GITHUB_PR_DOSSIER_PASS",
+      pull_request: pullRequestSnapshot(pr.data),
+      changed_files: files.data,
+      reviews: reviews.data,
+      checks: checkResponse?.data,
+      combined_status: statusResponse?.data,
+    };
+  });
+}
+
+export async function getGitHubChecks(payload, config) {
+  const { owner, repo } = parseRepository(payload.repository_full_name);
+  const ref = String(payload.ref || "");
+  if (!ref) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "ref is required" });
+  return withGitHubAuth(config, async (octokit) => {
+    const [checks, status] = await Promise.all([
+      octokit.checks.listForRef({ owner, repo, ref, per_page: 100 }),
+      octokit.repos.getCombinedStatusForRef({ owner, repo, ref }),
+    ]);
+    return { status: "GITHUB_CHECKS_PASS", ref, checks: checks.data, combined_status: status.data };
+  });
+}
