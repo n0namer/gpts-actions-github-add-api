@@ -25,6 +25,499 @@ tags:
   - name: actions
 
 paths:
+  /repos/{owner}/{repo}/dispatches:
+    post:
+      operationId: repository_dispatch
+      summary: Dispatch a repository event
+      description: Sends a repository_dispatch event with an event type and optional client payload.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_type]
+              additionalProperties: false
+              properties:
+                event_type: { type: string, maxLength: 100 }
+                client_payload: { type: object, additionalProperties: true }
+      responses:
+        "204": { description: Dispatch accepted. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs:
+    post:
+      operationId: workflow_rerun_failed
+      summary: Re-run failed jobs
+      description: Re-runs failed jobs and dependent jobs in an existing workflow run.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "201": { description: Re-run requested. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/actions/artifacts:
+    get:
+      operationId: artifacts_list
+      summary: List Actions artifacts
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: name, in: query, required: false, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Actions artifacts. }
+
+  /repos/{owner}/{repo}/actions/artifacts/{artifact_id}:
+    get:
+      operationId: artifact_get
+      summary: Get an Actions artifact
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: artifact_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Artifact metadata. }
+
+  /repos/{owner}/{repo}/deployments:
+    get:
+      operationId: deployments_list
+      summary: List deployments
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: sha, in: query, required: false, schema: { type: string } }
+        - { name: ref, in: query, required: false, schema: { type: string } }
+        - { name: environment, in: query, required: false, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Deployments. }
+    post:
+      operationId: deployment_create
+      summary: Create a deployment
+      description: Creates a deployment for a ref with optional environment, payload, task, and production flags.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ref]
+              additionalProperties: true
+              properties:
+                ref: { type: string }
+                task: { type: string }
+                auto_merge: { type: boolean }
+                required_contexts: { type: array, items: { type: string } }
+                payload: {}
+                environment: { type: string }
+                description: { type: string }
+                transient_environment: { type: boolean }
+                production_environment: { type: boolean }
+      responses:
+        "201": { description: Deployment created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/deployments/{deployment_id}/statuses:
+    get:
+      operationId: deployment_statuses_list
+      summary: List deployment statuses
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: deployment_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Deployment statuses. }
+    post:
+      operationId: deployment_status_create
+      summary: Create a deployment status
+      description: Creates a deployment status such as queued, in_progress, success, failure, error, or inactive.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: deployment_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              additionalProperties: false
+              properties:
+                state: { type: string, enum: [error, failure, inactive, in_progress, queued, pending, success] }
+                target_url: { type: string }
+                log_url: { type: string }
+                description: { type: string }
+                environment: { type: string }
+                environment_url: { type: string }
+                auto_inactive: { type: boolean }
+      responses:
+        "201": { description: Deployment status created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/environments:
+    get:
+      operationId: environments_list
+      summary: List environments
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Repository environments. }
+
+  /repos/{owner}/{repo}/environments/{environment_name}:
+    get:
+      operationId: environment_get
+      summary: Get an environment
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: environment_name, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Environment details. }
+
+  /repos/{owner}/{repo}/releases/{release_id}/assets:
+    get:
+      operationId: release_assets_list
+      summary: List release assets
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: release_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Release assets. }
+
+  /repos/{owner}/{repo}/releases/{release_id}/assets-upload:
+    post:
+      operationId: release_asset_upload
+      summary: Upload a release asset
+      description: Uploads binary content to a release. This operation uses uploads.github.com and requires a name query parameter.
+      tags: [repos]
+      servers:
+        - url: https://uploads.github.com
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: release_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: name, in: query, required: true, schema: { type: string } }
+        - { name: label, in: query, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { description: Release asset uploaded. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/labels:
+    get:
+      operationId: labels_list
+      summary: List labels
+      tags: [issues]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Labels. }
+    post:
+      operationId: label_create
+      summary: Create a label
+      tags: [issues]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties:
+                name: { type: string }
+                color: { type: string }
+                description: { type: string }
+      responses:
+        "201": { description: Label created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/milestones:
+    get:
+      operationId: milestones_list
+      summary: List milestones
+      tags: [issues]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string, enum: [open, closed], default: open } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Milestones. }
+    post:
+      operationId: milestone_create
+      summary: Create a milestone
+      tags: [issues]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              additionalProperties: false
+              properties:
+                title: { type: string }
+                state: { type: string, enum: [open, closed] }
+                description: { type: string }
+                due_on: { type: string, format: date-time }
+      responses:
+        "201": { description: Milestone created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/actions/variables:
+    get:
+      operationId: variables_list
+      summary: List Actions variables
+      description: Lists repository Actions variables. This endpoint does not expose Actions secrets.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Actions variables. }
+    post:
+      operationId: variable_create
+      summary: Create an Actions variable
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, value]
+              additionalProperties: false
+              properties:
+                name: { type: string }
+                value: { type: string }
+      responses:
+        "201": { description: Variable created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/actions/variables/{name}:
+    patch:
+      operationId: variable_update
+      summary: Update an Actions variable
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: { type: string }
+                value: { type: string }
+      responses:
+        "204": { description: Variable updated. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/code-scanning/alerts:
+    get:
+      operationId: code_scanning_alerts_list
+      summary: List code scanning alerts
+      tags: [security]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string, enum: [open, dismissed, fixed] } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Code scanning alerts. }
+
+  /repos/{owner}/{repo}/secret-scanning/alerts:
+    get:
+      operationId: secret_scanning_alerts_list
+      summary: List secret scanning alerts
+      tags: [security]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string, enum: [open, resolved] } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Secret scanning alerts. }
+
+  /repos/{owner}/{repo}/dependabot/alerts:
+    get:
+      operationId: dependabot_alerts_list
+      summary: List Dependabot alerts
+      tags: [security]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string, enum: [auto_dismissed, dismissed, fixed, open] } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Dependabot alerts. }
+
+  /repos/{owner}/{repo}/git/blobs:
+    post:
+      operationId: blob_create
+      summary: Create a Git blob
+      description: Creates a Git blob for use in a tree. Content may be utf-8 text or base64 data.
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              additionalProperties: false
+              properties:
+                content: { type: string }
+                encoding: { type: string, enum: [utf-8, base64], default: utf-8 }
+      responses:
+        "201": { description: Blob created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/git/trees:
+    post:
+      operationId: tree_create
+      summary: Create a Git tree
+      description: Creates a Git tree from entries and an optional base tree for atomic multi-file commits.
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tree]
+              additionalProperties: false
+              properties:
+                base_tree: { type: string }
+                tree:
+                  type: array
+                  items:
+                    type: object
+                    required: [path, mode, type]
+                    additionalProperties: false
+                    properties:
+                      path: { type: string }
+                      mode: { type: string, enum: ["100644", "100755", "040000", "160000", "120000"] }
+                      type: { type: string, enum: [blob, tree, commit] }
+                      sha: { type: [string, "null"] }
+                      content: { type: string }
+      responses:
+        "201": { description: Tree created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/git/commits:
+    post:
+      operationId: commit_create
+      summary: Create a Git commit
+      description: Creates a Git commit from a tree and parent commits. It does not move a branch until a ref is updated.
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message, tree, parents]
+              additionalProperties: false
+              properties:
+                message: { type: string }
+                tree: { type: string }
+                parents: { type: array, items: { type: string }, minItems: 1 }
+      responses:
+        "201": { description: Commit created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/git/refs/{ref}:
+    patch:
+      operationId: ref_update
+      summary: Update a Git ref
+      description: Updates an existing ref without force. Use the current expected branch state before moving a protected or production ref.
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sha]
+              additionalProperties: false
+              properties:
+                sha: { type: string }
+                force: { type: boolean, enum: [false], default: false }
+      responses:
+        "200": { description: Ref updated. }
+        "422": { description: Update rejected or not a fast-forward. }
+      x-openai-isConsequential: true
+
   /rate_limit:
     get:
       operationId: rate_limit_get
