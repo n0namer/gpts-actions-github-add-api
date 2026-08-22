@@ -242,6 +242,13 @@ export function createRequestHandler(options = {}) {
     mergePullRequest: options.mergePullRequest || mergePullRequestOnGitHub,
     githubRest: options.githubRest || requestGitHubRest,
     githubGraphql: options.githubGraphql || requestGitHubGraphql,
+    githubRestPaginated: options.githubRestPaginated || requestGitHubRestPaginated,
+    githubBatchRead: options.githubBatchRead || batchGitHubRead,
+    githubRateLimit: options.githubRateLimit || getGitHubRateLimit,
+    githubCapabilities: options.githubCapabilities || getGitHubCapabilities,
+    githubAuthDiagnose: options.githubAuthDiagnose || diagnoseGitHubAuth,
+    githubPrDossier: options.githubPrDossier || getPullRequestDossier,
+    githubChecks: options.githubChecks || getGitHubChecks,
   };
   return async function requestHandler(req, res) {
     try {
