@@ -26,6 +26,141 @@ tags:
   - name: actions
 
 paths:
+  /apps/{app_slug}:
+    get:
+      operationId: apps_get_by_slug
+      summary: Get public GitHub App metadata
+      description: Returns GitHub App metadata, including app id and client id. GitHub does not return client secrets from this endpoint.
+      tags: [apps]
+      parameters:
+        - { name: app_slug, in: path, required: true, schema: { type: string, minLength: 1 } }
+      responses:
+        "200": { description: GitHub App metadata. }
+        "404": { description: App not found. }
+
+  /app:
+    get:
+      operationId: apps_get_authenticated
+      summary: Get the authenticated GitHub App
+      description: Requires GitHub App JWT authentication. Returns app metadata including id, slug, client_id, permissions, events and installations_count; never returns a client secret or private key.
+      tags: [apps]
+      responses:
+        "200": { description: Authenticated GitHub App metadata. }
+        "401": { description: Requires valid GitHub App JWT authentication. }
+
+  /app/installations:
+    get:
+      operationId: apps_list_installations
+      summary: List installations for the authenticated GitHub App
+      description: Requires GitHub App JWT authentication. Returns installation ids, accounts, repository selection, permissions and events.
+      tags: [apps]
+      parameters:
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200": { description: GitHub App installations. }
+        "401": { description: Requires valid GitHub App JWT authentication. }
+
+  /app/installations/{installation_id}:
+    get:
+      operationId: apps_get_installation
+      summary: Get a GitHub App installation
+      description: Requires GitHub App JWT authentication.
+      tags: [apps]
+      parameters:
+        - { name: installation_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Installation metadata and permissions. }
+        "404": { description: Installation not found. }
+
+  /repos/{owner}/{repo}/installation:
+    get:
+      operationId: apps_get_repository_installation
+      summary: Get the GitHub App installation for a repository
+      description: Requires GitHub App JWT authentication. Useful for resolving the installation_id that owns access to a repository.
+      tags: [apps]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string, minLength: 1 } }
+        - { name: repo, in: path, required: true, schema: { type: string, minLength: 1 } }
+      responses:
+        "200": { description: Repository installation metadata. }
+        "404": { description: Installation or repository not found. }
+
+  /orgs/{org}/installation:
+    get:
+      operationId: apps_get_organization_installation
+      summary: Get the GitHub App installation for an organization
+      description: Requires GitHub App JWT authentication.
+      tags: [apps]
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string, minLength: 1 } }
+      responses:
+        "200": { description: Organization installation metadata. }
+        "404": { description: Installation not found. }
+
+  /users/{username}/installation:
+    get:
+      operationId: apps_get_user_installation
+      summary: Get the GitHub App installation for a user
+      description: Requires GitHub App JWT authentication.
+      tags: [apps]
+      parameters:
+        - { name: username, in: path, required: true, schema: { type: string, minLength: 1 } }
+      responses:
+        "200": { description: User installation metadata. }
+        "404": { description: Installation not found. }
+
+  /app/installations/{installation_id}/access_tokens:
+    post:
+      operationId: apps_create_installation_access_token
+      summary: Create a GitHub App installation access token
+      description: Requires GitHub App JWT authentication. The returned token is secret-bearing and short-lived; callers must never print, log, persist, or expose it. It expires after approximately one hour. Optional repositories and permissions can further scope access.
+      tags: [apps]
+      parameters:
+        - { name: installation_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                repositories:
+                  type: array
+                  maxItems: 500
+                  items: { type: string, minLength: 1 }
+                repository_ids:
+                  type: array
+                  maxItems: 500
+                  items: { type: integer, minimum: 1 }
+                permissions:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    enum: [read, write]
+      responses:
+        "201":
+          description: Installation token created. Response contains a secret token and expiry; do not expose the token.
+        "401": { description: Requires valid GitHub App JWT authentication. }
+        "403": { description: Requested scope exceeds installation permissions. }
+        "404": { description: Installation not found. }
+        "422": { description: Validation failed. }
+      x-openai-isConsequential: true
+
+  /installation/repositories:
+    get:
+      operationId: apps_list_installation_repositories
+      summary: List repositories accessible to the current installation token
+      description: Requires a GitHub App installation access token.
+      tags: [apps]
+      parameters:
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200": { description: Repositories accessible to the installation. }
+        "401": { description: Requires an installation access token. }
+
   /repos/{owner}/{repo}/pulls/{pull_number}/merge:
     put:
       operationId: pulls_merge
