@@ -1510,31 +1510,7 @@ paths:
       x-openai-isConsequential: true
 
   /repos/{owner}/{repo}/pulls/{pull_number}:
-    patch:
-      operationId: pull_update
-      summary: Update a pull request
-      description: Updates pull request title, body, state, base branch, or maintainer modification setting.
-      tags: [pulls]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                title: { type: string }
-                body: { type: string }
-                state: { type: string, enum: [open, closed] }
-                base: { type: string }
-                maintainer_can_modify: { type: boolean }
-      responses:
-        "200": { description: Pull request updated. }
-      x-openai-isConsequential: true
+
     get:
       operationId: pulls_get
       summary: Get pull request
