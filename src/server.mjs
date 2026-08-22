@@ -9,7 +9,7 @@ import {
 } from "./patch.mjs";
 import { checkLimits, scanSecrets, validateAccess, validateRepositoryScope } from "./safety.mjs";
 import {
-  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
+  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, createGitHubRepository, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
   githubRestRequest, githubGraphqlRequest, diagnoseGitHubAppRepository,
   searchAllowedGitHubRepositories, searchGitHubRepositoryCode,
