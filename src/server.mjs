@@ -23,7 +23,8 @@ export { scanSecrets, validateAccess } from "./safety.mjs";
 export {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
-  requestGitHubRest, requestGitHubGraphql,
+  requestGitHubRest, requestGitHubGraphql, requestGitHubRestPaginated, batchGitHubRead,
+  getGitHubRateLimit, getGitHubCapabilities, diagnoseGitHubAuth, getPullRequestDossier, getGitHubChecks,
 } from "./github.mjs";
 export { openApiDocument } from "./openapi.mjs";
 
