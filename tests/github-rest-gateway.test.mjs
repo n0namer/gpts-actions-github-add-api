@@ -291,7 +291,7 @@ test("repository scope defaults fail closed for generic REST and GraphQL", async
 });
 
 test("REST policy rejects normalization tricks and decodes paths before scope and risk checks", async () => {
-  const config = { ...baseConfig, allowedRepos: ["n0namer/allowed"] };
+  const config = { ...baseConfig, githubRepositoryScopeMode: "allowlist", allowedRepos: ["n0namer/allowed"] };
   for (const path of [
     "/repos/n0namer/allowed/../../user",
     "/repos/n0namer/allowed/%2e%2e/%2e%2e/user",
