@@ -467,7 +467,7 @@ export async function batchGitHubRead(payload, config) {
 export async function diagnoseGitHubAuth(payload, config) {
   try {
     const capabilities = await getGitHubCapabilities(payload, config);
-    return { status: "GITHUB_AUTH_DIAGNOSE_PASS", ...capabilities };
+    return { ...capabilities, status: "GITHUB_AUTH_DIAGNOSE_PASS" };
   } catch (error) {
     return {
       status: "GITHUB_AUTH_DIAGNOSE_FAIL",
