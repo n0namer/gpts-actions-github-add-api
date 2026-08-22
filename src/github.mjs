@@ -141,6 +141,56 @@ export async function createFileOnGitHub(payload, content, message, config) {
   }
 }
 
+export async function createGitHubRepository(payload, config) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
+  if (payload.confirm_mutation !== true) throw new GitHubAddError(409, { status: "MUTATION_CONFIRMATION_REQUIRED", message: "confirm_mutation=true is required to create a repository" });
+  const name = String(payload.name || "").trim();
+  if (!name || name.length > 100 || !/^[A-Za-z0-9._-]+$/.test(name)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "name must be 1-100 characters using letters, numbers, dot, underscore, or hyphen" });
+  const requestedOwner = String(payload.owner || "").trim();
+  try {
+    return await withGitHubAuth(config, async (octokit) => {
+      const viewer = await octokit.users.getAuthenticated();
+      const viewerLogin = String(viewer.data.login || "");
+      const params = {
+        name,
+        description: typeof payload.description === "string" ? payload.description.slice(0, 350) : undefined,
+        homepage: typeof payload.homepage === "string" ? payload.homepage : undefined,
+        private: payload.private !== false,
+        auto_init: payload.auto_init !== false,
+        has_issues: payload.has_issues !== false,
+        has_projects: payload.has_projects !== false,
+        has_wiki: payload.has_wiki !== false,
+        has_discussions: payload.has_discussions === true,
+        is_template: payload.is_template === true,
+      };
+      const response = requestedOwner && requestedOwner.toLowerCase() !== viewerLogin.toLowerCase()
+        ? await octokit.repos.createInOrg({ org: requestedOwner, ...params })
+        : await octokit.repos.createForAuthenticatedUser(params);
+      const fullName = String(response.data.full_name || `${requestedOwner || viewerLogin}/${name}`);
+      const { owner, repo } = parseRepository(fullName);
+      const reread = await octokit.repos.get({ owner, repo });
+      return {
+        status: "GITHUB_REPOSITORY_CREATE_PASS",
+        full_name: reread.data.full_name,
+        private: Boolean(reread.data.private),
+        default_branch: reread.data.default_branch,
+        html_url: reread.data.html_url,
+        owner: reread.data.owner?.login,
+        created: true,
+        reread_verified: true,
+      };
+    });
+  } catch (error) {
+    if (error instanceof GitHubAddError) throw error;
+    const githubStatus = error?.status;
+    const message = error?.response?.data?.message || error?.message || "GitHub repository creation failed";
+    if (githubStatus === 401) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub authentication failed" });
+    if (githubStatus === 403) throw new GitHubAddError(403, { status: "GITHUB_FORBIDDEN", message, github_status: githubStatus });
+    if (githubStatus === 422) throw new GitHubAddError(422, { status: "GITHUB_REPOSITORY_CREATE_BLOCKED", message, github_status: githubStatus });
+    throw error;
+  }
+}
+
 function normalizePullNumber(value) {
   const pullNumber = Number(value);
   if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
