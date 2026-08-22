@@ -11,6 +11,7 @@ import { validateContentForPath } from "./validation.mjs";
 import {
   readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
+  requestGitHubRest, requestGitHubGraphql,
 } from "./github.mjs";
 import { openApiDocument } from "./openapi.mjs";
 
