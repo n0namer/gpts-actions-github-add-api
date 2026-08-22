@@ -1,0 +1,4 @@
+GitHub Action schema smoke test
+branch: test/action-schema-20260822-1805
+base_head: 3f60512595796dd3fb500afbf80e8c08a90ee726
+purpose: verify git_create_ref + repos_create_or_update_file_contents + repos_get_content
