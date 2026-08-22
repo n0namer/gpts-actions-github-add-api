@@ -1894,7 +1894,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
