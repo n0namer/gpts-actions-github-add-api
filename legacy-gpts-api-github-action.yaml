@@ -49,19 +49,6 @@ paths:
       responses:
         "200": { description: Git commit. }
 
-  /repos/{owner}/{repo}/git/trees/{tree_sha}:
-    get:
-      operationId: tree_get
-      summary: Get a Git tree
-      tags: [git]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: tree_sha, in: path, required: true, schema: { type: string } }
-        - { name: recursive, in: query, required: false, schema: { type: string, enum: ["1"] } }
-      responses:
-        "200": { description: Git tree. }
-
   /repos/{owner}/{repo}/git/blobs/{file_sha}:
     get:
       operationId: blob_get
