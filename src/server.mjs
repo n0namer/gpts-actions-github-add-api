@@ -269,6 +269,13 @@ export function createRequestHandler(options = {}) {
       if (req.method === "POST" && url.pathname === "/file/create") { requireBearer(req, config); return send(res, 200, await handleCreate(await readBody(req), config, deps)); }
       if (req.method === "POST" && url.pathname === "/github/rest") { requireBearer(req, config); return send(res, 200, await deps.githubRest(await readBody(req), config)); }
       if (req.method === "POST" && url.pathname === "/github/graphql") { requireBearer(req, config); return send(res, 200, await deps.githubGraphql(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/rest-paginated") { requireBearer(req, config); return send(res, 200, await deps.githubRestPaginated(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/batch-read") { requireBearer(req, config); return send(res, 200, await deps.githubBatchRead(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/rate-limit") { requireBearer(req, config); return send(res, 200, await deps.githubRateLimit(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/capabilities") { requireBearer(req, config); return send(res, 200, await deps.githubCapabilities(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/auth-diagnose") { requireBearer(req, config); return send(res, 200, await deps.githubAuthDiagnose(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/pr-dossier") { requireBearer(req, config); return send(res, 200, await deps.githubPrDossier(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/checks") { requireBearer(req, config); return send(res, 200, await deps.githubChecks(await readBody(req), config)); }
       if (req.method === "POST" && url.pathname === "/pull-request/read") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req)); return send(res, 200, await deps.readPullRequest(payload, config)); }
       if (req.method === "POST" && url.pathname === "/pull-request/ready") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true }); return send(res, 200, await deps.markPullRequestReady(payload, config)); }
       if (req.method === "POST" && url.pathname === "/pull-request/merge") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true }); return send(res, 200, await deps.mergePullRequest(payload, config)); }
