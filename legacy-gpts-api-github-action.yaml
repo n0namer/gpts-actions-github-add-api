@@ -233,18 +233,6 @@ paths:
       responses:
         "200": { description: Check run. }
 
-  /repos/{owner}/{repo}/commits/{ref}/status:
-    get:
-      operationId: combined_status_get
-      summary: Get combined commit status
-      tags: [repos]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: ref, in: path, required: true, schema: { type: string } }
-      responses:
-        "200": { description: Combined commit status. }
-
   /repos/{owner}/{repo}/actions/runs/{run_id}:
     get:
       operationId: workflow_run_get
