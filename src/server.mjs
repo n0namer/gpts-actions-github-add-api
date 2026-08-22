@@ -450,6 +450,10 @@ export function createRequestHandler(options = {}) {
         requireBearer(req, config);
         return send(res, 200, await deps.searchRepositoryCode(await readBody(req), config));
       }
+      if (req.method === "POST" && url.pathname === "/github/repositories/create") {
+        requireBearer(req, config);
+        return send(res, 200, await deps.createRepository(await readBody(req), config));
+      }
       if (req.method === "POST" && url.pathname === "/github/app/diagnose") {
         requireBearer(req, config);
         return send(res, 200, await deps.diagnoseGitHubApp(await readBody(req), config));
