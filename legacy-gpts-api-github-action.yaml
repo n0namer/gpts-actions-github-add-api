@@ -26,6 +26,36 @@ tags:
   - name: actions
 
 paths:
+  /graphql:
+    post:
+      operationId: github_graphql
+      summary: Execute a GitHub GraphQL operation
+      description: Executes GitHub GraphQL with the configured token. Supports queries and mutations allowed by that token. Treat mutations as consequential.
+      tags: [graphql]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  maxLength: 100000
+                variables:
+                  type: object
+                  additionalProperties: true
+                operationName:
+                  type: string
+      responses:
+        "200": { description: GitHub GraphQL response. }
+        "400": { description: Invalid GraphQL request. }
+        "401": { description: Unauthorized. }
+        "403": { description: Forbidden by token permissions. }
+      x-openai-isConsequential: true
+
   /apps/{app_slug}:
     get:
       operationId: apps_get_by_slug
