@@ -22,7 +22,7 @@ export { loadConfig } from "./config.mjs";
 export { applyOperation, replaceBetweenMarkers, insertAfterMarker, replaceExactOnce, replaceWithContext, replaceLineRange, insertAfterExactOnce, createLineView } from "./patch.mjs";
 export { scanSecrets, validateAccess, validateRepositoryScope } from "./safety.mjs";
 export {
-  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, checkGitHubAuth,
+  readFileFromGitHub, updateFileOnGitHub, createFileOnGitHub, createGitHubRepository, checkGitHubAuth,
   readPullRequestFromGitHub, markPullRequestReadyForReviewOnGitHub, mergePullRequestOnGitHub,
   githubRestRequest, githubGraphqlRequest, diagnoseGitHubAppRepository,
   searchAllowedGitHubRepositories, searchGitHubRepositoryCode,
