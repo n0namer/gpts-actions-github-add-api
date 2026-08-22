@@ -297,19 +297,6 @@ paths:
       responses:
         "302": { description: Redirect to log archive. }
 
-  /repos/{owner}/{repo}/actions/jobs/{job_id}/logs:
-    get:
-      operationId: job_logs_download
-      summary: Download job logs
-      description: Returns a redirect to the plain text job log when available.
-      tags: [actions]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: job_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
-      responses:
-        "302": { description: Redirect to job log. }
-
   /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}:
     get:
       operationId: artifact_download
