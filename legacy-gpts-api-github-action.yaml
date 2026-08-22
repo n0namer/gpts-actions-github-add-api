@@ -212,12 +212,10 @@ paths:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
       responses:
         "200": { description: Release assets. }
-
-  /repos/{owner}/{repo}/releases/{release_id}/assets-upload:
     post:
       operationId: release_asset_upload
       summary: Upload a release asset
-      description: Uploads binary content to a release. This operation uses uploads.github.com and requires a name query parameter.
+      description: Uploads binary content to a release through uploads.github.com and requires a name query parameter.
       tags: [repos]
       servers:
         - url: https://uploads.github.com
