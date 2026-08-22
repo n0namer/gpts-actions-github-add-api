@@ -2142,6 +2142,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/GitHubError"
 
+  /graphql:
+    post:
+      operationId: graphql
+      summary: Execute GitHub GraphQL
+      description: GraphQL fallback for queries and mutations allowed by the bearer token.
+      tags: [repos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [query]
+              properties:
+                query: { type: string }
+                operationName: { type: string }
+                variables: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: GraphQL response. }
+      x-openai-isConsequential: true
+
 components:
   securitySchemes:
     bearerAuth:
