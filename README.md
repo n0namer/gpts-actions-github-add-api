@@ -28,6 +28,9 @@ High-value endpoints:
 GET  /health
 GET  /openapi.json
 POST /github/rest
+POST /github/search/repositories
+POST /github/search/code
+POST /github/repositories/create
 POST /github/graphql
 POST /github/app/diagnose
 POST /github/repository/diagnose
