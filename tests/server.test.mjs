@@ -15,6 +15,7 @@ import {
   createLineView,
   scanSecrets,
   validateAccess,
+  createGitHubRepository,
 } from "../src/server.mjs";
 
 const fixture = `# Fixture
