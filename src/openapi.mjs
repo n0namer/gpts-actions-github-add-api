@@ -106,6 +106,35 @@ export function openApiDocument() {
           responses: { "200": { description: "Scoped code search completed" }, "400": { description: "Invalid search query" }, "403": { description: "Repository not allowed" }, "502": { description: "GitHub code search failed" } },
         },
       },
+      "/github/repositories/create": {
+        post: {
+          operationId: "createGitHubRepository",
+          summary: "Create a new GitHub repository for the authenticated user or an organization",
+          description: "Creates a repository using the server-owned GitHub user credential. owner is optional; omit it to create under the authenticated user. Requires confirm_mutation=true and performs a GitHub reread verification.",
+          security: [{ ActionBearerAuth: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: {
+            type: "object",
+            required: ["name", "confirm_mutation"],
+            properties: {
+              name: { type: "string", minLength: 1, maxLength: 100 },
+              owner: { type: "string", description: "Optional organization login. Omit for the authenticated user." },
+              description: { type: "string", maxLength: 350 },
+              homepage: { type: "string" },
+              private: { type: "boolean", default: true },
+              auto_init: { type: "boolean", default: true },
+              has_issues: { type: "boolean", default: true },
+              has_projects: { type: "boolean", default: true },
+              has_wiki: { type: "boolean", default: true },
+              has_discussions: { type: "boolean", default: false },
+              is_template: { type: "boolean", default: false },
+              confirm_mutation: { type: "boolean", const: true },
+            },
+            additionalProperties: false,
+          } } } },
+          responses: { "200": { description: "Repository created and reread verified" }, "403": { description: "GitHub denied repository creation" }, "409": { description: "Mutation confirmation required" }, "422": { description: "Repository creation rejected by GitHub" } },
+          "x-openai-isConsequential": true,
+        },
+      },
       "/github/graphql": {
         post: {
           operationId: "githubGraphql",
