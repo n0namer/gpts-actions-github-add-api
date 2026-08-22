@@ -17,7 +17,7 @@ Status: `READY_FOR_REIMPORT / CURRENT_CHAT_SCHEMA_STALE` until the updated Actio
 3. Import schema from:
 
 ```text
-https://github-add-api-production.up.railway.app/openapi.json
+https://github-patch.srv1904412.hstgr.cloud/openapi.json
 ```
 
 4. Save the action.
