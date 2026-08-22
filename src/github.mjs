@@ -742,14 +742,36 @@ function rejectSearchScopeSyntax(query) {
 
 export async function searchAllowedGitHubRepositories(payload, config) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "JSON object required" });
-  const query = normalizeScopedSearchText(payload.query).toLowerCase();
+  const query = normalizeScopedSearchText(payload.query);
   const maxItems = Number(payload.max_items ?? 20);
   if (!Number.isInteger(maxItems) || maxItems < 1 || maxItems > 100) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "max_items must be an integer from 1 to 100" });
-  if (!Array.isArray(config.allowedRepos) || config.allowedRepos.length === 0) {
-    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "GITHUB_ALLOWED_REPOS is required for repository search" });
+  const scopeMode = String(config.githubRepositoryScopeMode || "token").toLowerCase();
+  if (scopeMode === "token") {
+    const candidates = tokenCandidates(config);
+    if (candidates.length === 0) throw new GitHubAddError(401, { status: "AUTH_FAILED", message: "GitHub user token is not configured" });
+    let result = null;
+    for (const candidate of candidates) {
+      result = await githubRestRaw({ method: "GET", path: "/search/repositories", query: { q: query, per_page: Math.min(maxItems, 100) }, token: candidate.value, config });
+      if (result.status !== 401) break;
+    }
+    if (!result?.ok) githubRestFailure(result || { status: 502, data: null });
+    const items = (Array.isArray(result.data?.items) ? result.data.items : []).slice(0, maxItems);
+    return {
+      status: "GITHUB_REPOSITORY_SEARCH_PASS",
+      scope: "token",
+      query,
+      total_count: items.length,
+      items: redactGitHubResponse(items),
+      request_id: result.request_id,
+      rate_limit_remaining: result.rate_limit_remaining,
+    };
   }
+  if (!Array.isArray(config.allowedRepos) || config.allowedRepos.length === 0) {
+    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "GITHUB_ALLOWED_REPOS is required for allowlist repository search" });
+  }
+  const lowered = query.toLowerCase();
   const matches = config.allowedRepos
-    .filter((repository) => String(repository).toLowerCase().includes(query))
+    .filter((repository) => String(repository).toLowerCase().includes(lowered))
     .slice(0, maxItems)
     .map((full_name) => ({ full_name }));
   return { status: "GITHUB_REPOSITORY_SEARCH_PASS", scope: "allowlist", query, total_count: matches.length, items: matches };
