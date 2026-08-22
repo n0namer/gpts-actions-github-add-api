@@ -4,9 +4,9 @@ info:
   title: GitHub Safe Connector API
   version: 1.1.1
   description: >
-    GitHub REST and GraphQL API surface for ChatGPT Actions. Includes repository discovery,
-    file and code work, issues, pull requests, guarded merge, GitHub Apps, Actions inspection,
-    and GraphQL. Destructive and sensitive operations remain constrained by available endpoints.
+    Core ChatGPT Action profile: 29 frequent direct GitHub REST operations plus GraphQL.
+    Rare App/installation control-plane, arbitrary REST, chunk patching, diagnostics and
+    composite operations belong in github-patch.
 
 servers:
   - url: https://api.github.com
