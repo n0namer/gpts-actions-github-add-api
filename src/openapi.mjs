@@ -71,8 +71,8 @@ export function openApiDocument() {
       "/github/search/repositories": {
         post: {
           operationId: "searchGitHubRepositories",
-          summary: "Search only repositories admitted by the server allowlist",
-          description: "Read-only repository discovery constrained to GITHUB_ALLOWED_REPOS. The query cannot expand scope beyond the configured allowlist.",
+          summary: "Search repositories within the configured GitHub credential scope",
+          description: "Read-only repository discovery. In token mode it searches repositories visible to the configured GitHub user credential; allowlist mode remains available for restricted deployments.",
           security: [{ ActionBearerAuth: [] }],
           requestBody: { required: true, content: { "application/json": { schema: {
             type: "object",
