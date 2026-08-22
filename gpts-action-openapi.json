@@ -248,6 +248,74 @@
         "x-openai-isConsequential": true
       }
     },
+    "/github/rest-paginated": {
+      "post": {
+        "operationId": "githubRestPaginated",
+        "summary": "Read paginated GitHub REST results",
+        "description": "Fetches up to 10 pages and 1000 items from a GET-only GitHub REST path.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubRestPaginatedRequest" } } } },
+        "responses": { "200": { "description": "Paginated GitHub REST result" } }
+      }
+    },
+    "/github/batch-read": {
+      "post": {
+        "operationId": "githubBatchRead",
+        "summary": "Run up to 20 GitHub GET requests",
+        "description": "Runs a bounded batch of read-only GitHub REST calls and returns per-request success or failure.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubBatchReadRequest" } } } },
+        "responses": { "200": { "description": "Batch read result" } }
+      }
+    },
+    "/github/rate-limit": {
+      "post": {
+        "operationId": "githubRateLimit",
+        "summary": "Read GitHub API rate limits",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false } } } },
+        "responses": { "200": { "description": "GitHub rate limit state" } }
+      }
+    },
+    "/github/capabilities": {
+      "post": {
+        "operationId": "githubCapabilities",
+        "summary": "Inspect GitHub identity and repository permissions",
+        "description": "Returns current identity, rate state, generic REST and GraphQL availability, and repository permissions when a repository is supplied.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubRepositoryOptionalRequest" } } } },
+        "responses": { "200": { "description": "GitHub capability report" } }
+      }
+    },
+    "/github/auth-diagnose": {
+      "post": {
+        "operationId": "githubAuthDiagnose",
+        "summary": "Diagnose GitHub authentication and permissions",
+        "description": "Returns identity and repository access when possible. On failure it reports GitHub status and accepted permission hints without exposing credentials.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubRepositoryOptionalRequest" } } } },
+        "responses": { "200": { "description": "GitHub auth diagnosis" } }
+      }
+    },
+    "/github/pr-dossier": {
+      "post": {
+        "operationId": "githubPrDossier",
+        "summary": "Read a pull request dossier",
+        "description": "Returns PR state, head SHA, changed files, reviews, checks, and combined commit status in one read-only call.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PullRequestReadRequest" } } } },
+        "responses": { "200": { "description": "Pull request dossier" } }
+      }
+    },
+    "/github/checks": {
+      "post": {
+        "operationId": "githubChecks",
+        "summary": "Read checks and combined status for a ref",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubChecksRequest" } } } },
+        "responses": { "200": { "description": "Checks and status result" } }
+      }
+    },
     "/pull-request/read": {
       "post": {
         "operationId": "githubReadPullRequest",
