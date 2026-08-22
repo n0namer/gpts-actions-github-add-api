@@ -1,0 +1,3212 @@
+openapi: 3.1.0
+
+info:
+  title: GitHub Safe Connector API
+  version: 1.1.1
+  description: >
+    Safe GitHub REST API subset for ChatGPT Actions. Includes repository discovery,
+    code/file reads, issue/PR reads, safe branch/file/PR creation, PR review submission,
+    and GitHub Actions workflow/job inspection. Excludes destructive operations, merges,
+    force ref updates, secrets, repository settings, permission changes, and deletions.
+
+servers:
+  - url: https://api.github.com
+    description: GitHub REST API
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: users
+  - name: repos
+  - name: search
+  - name: git
+  - name: issues
+  - name: pulls
+  - name: actions
+
+paths:
+  /user:
+    get:
+      operationId: users_get_authenticated
+      summary: Get authenticated GitHub user
+      description: Gets the profile of the authenticated GitHub user.
+      tags:
+        - users
+      parameters:
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Authenticated user profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /user/repos:
+    get:
+      operationId: repos_list_for_authenticated_user
+      summary: List repositories accessible to authenticated user
+      description: Lists repositories visible to the authenticated user.
+      tags:
+        - repos
+      parameters:
+        - name: visibility
+          in: query
+          required: false
+          description: Repository visibility filter.
+          schema:
+            type: string
+            enum:
+              - all
+              - public
+              - private
+            default: all
+        - name: affiliation
+          in: query
+          required: false
+          description: Comma-separated repository affiliations.
+          schema:
+            type: string
+            default: owner,collaborator,organization_member
+        - name: sort
+          in: query
+          required: false
+          description: Sort field.
+          schema:
+            type: string
+            enum:
+              - created
+              - updated
+              - pushed
+              - full_name
+            default: updated
+        - name: direction
+          in: query
+          required: false
+          description: Sort direction.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of repositories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Repository"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+  /repos/{owner}/{repo}:
+    get:
+      operationId: repos_get
+      summary: Get repository metadata
+      description: Gets metadata for a repository.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Repository metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /search/repositories:
+    get:
+      operationId: search_repos
+      summary: Search repositories
+      description: Searches GitHub repositories.
+      tags:
+        - search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: GitHub search query.
+          schema:
+            type: string
+            minLength: 1
+        - name: sort
+          in: query
+          required: false
+          description: Sort field.
+          schema:
+            type: string
+            enum:
+              - stars
+              - forks
+              - help-wanted-issues
+              - updated
+        - name: order
+          in: query
+          required: false
+          description: Sort order.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Repository search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchRepositoriesResponse"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+  /search/code:
+    get:
+      operationId: search_code
+      summary: Search code
+      description: Searches code across GitHub repositories.
+      tags:
+        - search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: GitHub search query.
+          schema:
+            type: string
+            minLength: 1
+        - name: sort
+          in: query
+          required: false
+          description: Sort field.
+          schema:
+            type: string
+            enum:
+              - indexed
+        - name: order
+          in: query
+          required: false
+          description: Sort order.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Code search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchCodeResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+  /search/issues:
+    get:
+      operationId: search_issues_and_pull_requests
+      summary: Search issues and pull requests
+      description: Searches GitHub issues and pull requests.
+      tags:
+        - search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: GitHub search query.
+          schema:
+            type: string
+            minLength: 1
+        - name: sort
+          in: query
+          required: false
+          description: Sort field.
+          schema:
+            type: string
+            enum:
+              - comments
+              - reactions
+              - reactions-+1
+              - reactions--1
+              - reactions-smile
+              - reactions-thinking_face
+              - reactions-heart
+              - reactions-tada
+              - interactions
+              - created
+              - updated
+        - name: order
+          in: query
+          required: false
+          description: Sort order.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Issue and pull request search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchIssuesResponse"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+  /repos/{owner}/{repo}/contents/{path}:
+    get:
+      operationId: repos_get_content
+      summary: Get file or directory contents
+      description: >
+        Gets file or directory contents. The path may contain nested directories,
+        for example src/index.ts.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: path
+          in: path
+          required: true
+          description: Repository file or directory path.
+          schema:
+            type: string
+            minLength: 1
+        - name: ref
+          in: query
+          required: false
+          description: Git reference, branch, tag, or commit SHA.
+          schema:
+            type: string
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: File or directory contents.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ContentFile"
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/ContentFile"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Content not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+    put:
+      operationId: repos_create_or_update_file_contents
+      summary: Create or update file contents
+      description: >
+        Creates or updates a file. This safe connector requires an explicit branch
+        to avoid accidental writes to the repository default branch.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: path
+          in: path
+          required: true
+          description: Repository file path.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrUpdateFileRequest"
+      responses:
+        "200":
+          description: Existing file updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileCommitResponse"
+        "201":
+          description: New file created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileCommitResponse"
+        "404":
+          description: Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "409":
+          description: Conflict, usually due to SHA mismatch or branch state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/git/refs:
+    post:
+      operationId: git_create_ref
+      summary: Create git ref, usually a branch
+      description: Creates a new Git ref. This schema restricts refs to refs/heads/* branches.
+      tags:
+        - git
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRefRequest"
+      responses:
+        "201":
+          description: Git ref created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitRef"
+        "409":
+          description: Conflict.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/git/trees/{tree_sha}:
+    get:
+      operationId: git_get_tree
+      summary: Get repository tree
+      description: Gets a Git tree for a repository.
+      tags:
+        - git
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: tree_sha
+          in: path
+          required: true
+          description: Tree SHA or ref.
+          schema:
+            type: string
+            minLength: 1
+        - name: recursive
+          in: query
+          required: false
+          description: Set to 1 or true to recursively fetch the tree.
+          schema:
+            type: string
+            enum:
+              - "1"
+              - "true"
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Git tree.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitTree"
+        "404":
+          description: Tree not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/commits:
+    get:
+      operationId: repos_list_commits
+      summary: List commits
+      description: Lists commits in a repository.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: sha
+          in: query
+          required: false
+          description: SHA or branch to start listing commits from.
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          description: Only commits containing this file path.
+          schema:
+            type: string
+        - name: author
+          in: query
+          required: false
+          description: GitHub username or email address.
+          schema:
+            type: string
+        - name: since
+          in: query
+          required: false
+          description: Only commits after this ISO 8601 timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: until
+          in: query
+          required: false
+          description: Only commits before this ISO 8601 timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of commits.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Commit"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "409":
+          description: Repository is empty or in conflict.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/commits/{ref}:
+    get:
+      operationId: repos_get_commit
+      summary: Get commit
+      description: Gets a commit by SHA or ref.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: ref
+          in: path
+          required: true
+          description: Commit SHA, branch name, or tag name.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Commit details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Commit"
+        "404":
+          description: Commit not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+  /repos/{owner}/{repo}/compare/{basehead}:
+    get:
+      operationId: repos_compare_commits
+      summary: Compare two commits or refs
+      description: Compares two commits, branches, or tags using BASE...HEAD syntax.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: basehead
+          in: path
+          required: true
+          description: Comparison range, for example main...feature-branch.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Commit comparison.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareCommitsResponse"
+        "404":
+          description: Comparison not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/branches:
+    get:
+      operationId: repos_list_branches
+      summary: List branches
+      description: Lists branches in a repository.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: protected
+          in: query
+          required: false
+          description: Filter branches by branch protection status.
+          schema:
+            type: boolean
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of branches.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Branch"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/commits/{ref}/status:
+    get:
+      operationId: repos_get_combined_status_for_ref
+      summary: Get combined commit status
+      description: Gets the combined status for a commit SHA, branch, or tag.
+      tags:
+        - repos
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: ref
+          in: path
+          required: true
+          description: Commit SHA, branch name, or tag name.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Combined commit status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CombinedStatus"
+        "404":
+          description: Status not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/issues:
+    get:
+      operationId: issues_list_for_repo
+      summary: List repository issues
+      description: Lists repository issues. Pull requests may also appear in GitHub issue listings.
+      tags:
+        - issues
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: state
+          in: query
+          required: false
+          description: Issue state filter.
+          schema:
+            type: string
+            enum:
+              - open
+              - closed
+              - all
+            default: open
+        - name: labels
+          in: query
+          required: false
+          description: Comma-separated label names.
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          description: Sort field.
+          schema:
+            type: string
+            enum:
+              - created
+              - updated
+              - comments
+        - name: direction
+          in: query
+          required: false
+          description: Sort direction.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: since
+          in: query
+          required: false
+          description: Only issues updated after this ISO 8601 timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of issues.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Issue"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+    post:
+      operationId: issues_create
+      summary: Create issue
+      description: Creates a new issue.
+      tags:
+        - issues
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIssueRequest"
+      responses:
+        "201":
+          description: Issue created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/issues/{issue_number}:
+    get:
+      operationId: issues_get
+      summary: Get issue
+      description: Gets a single issue by issue number.
+      tags:
+        - issues
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: issue_number
+          in: path
+          required: true
+          description: Issue number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Issue details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "404":
+          description: Issue not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/issues/{issue_number}/comments:
+    get:
+      operationId: issues_list_comments
+      summary: List issue comments
+      description: Lists comments for an issue or pull request conversation.
+      tags:
+        - issues
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: issue_number
+          in: path
+          required: true
+          description: Issue or pull request number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of issue comments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IssueComment"
+        "404":
+          description: Issue not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+    post:
+      operationId: issues_create_comment
+      summary: Create issue or PR conversation comment
+      description: Creates a comment on an issue or pull request conversation.
+      tags:
+        - issues
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: issue_number
+          in: path
+          required: true
+          description: Issue or pull request number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueComment"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Issue not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/pulls:
+    get:
+      operationId: pulls_list
+      summary: List pull requests
+      description: Lists pull requests in a repository.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: state
+          in: query
+          required: false
+          description: Pull request state filter.
+          schema:
+            type: string
+            enum:
+              - open
+              - closed
+              - all
+            default: open
+        - name: head
+          in: query
+          required: false
+          description: Head user or organization and branch name in user:ref-name format.
+          schema:
+            type: string
+        - name: base
+          in: query
+          required: false
+          description: Base branch name.
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          description: Sort field.
+          schema:
+            type: string
+            enum:
+              - created
+              - updated
+              - popularity
+              - long-running
+        - name: direction
+          in: query
+          required: false
+          description: Sort direction.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of pull requests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PullRequest"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+
+    post:
+      operationId: pulls_create
+      summary: Create pull request
+      description: Creates a pull request from a head branch into a base branch.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePullRequestRequest"
+      responses:
+        "201":
+          description: Pull request created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequest"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/pulls/{pull_number}:
+    get:
+      operationId: pulls_get
+      summary: Get pull request
+      description: Gets a single pull request by number.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: pull_number
+          in: path
+          required: true
+          description: Pull request number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Pull request details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequest"
+        "404":
+          description: Pull request not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/files:
+    get:
+      operationId: pulls_list_files
+      summary: List pull request changed files
+      description: Lists files changed in a pull request.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: pull_number
+          in: path
+          required: true
+          description: Pull request number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of changed files.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PullRequestFile"
+        "404":
+          description: Pull request not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/reviews:
+    post:
+      operationId: pulls_submit_review
+      summary: Submit pull request review
+      description: Submits a review on a pull request.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: pull_number
+          in: path
+          required: true
+          description: Pull request number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitReviewRequest"
+      responses:
+        "200":
+          description: Review submitted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequestReview"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Pull request not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubValidationError"
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/comments:
+    get:
+      operationId: pulls_list_review_comments
+      summary: List pull request review comments
+      description: Lists review comments for a pull request.
+      tags:
+        - pulls
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: pull_number
+          in: path
+          required: true
+          description: Pull request number.
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: List of review comments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PullRequestReviewComment"
+        "404":
+          description: Pull request not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/actions/workflows:
+    get:
+      operationId: actions_list_repo_workflows
+      summary: List repository workflows
+      description: Lists GitHub Actions workflows for a repository.
+      tags:
+        - actions
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Repository workflows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowsResponse"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/actions/runs:
+    get:
+      operationId: actions_list_workflow_runs_for_repo
+      summary: List workflow runs for repository
+      description: Lists workflow runs for a repository.
+      tags:
+        - actions
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: branch
+          in: query
+          required: false
+          description: Branch name.
+          schema:
+            type: string
+        - name: event
+          in: query
+          required: false
+          description: Workflow event name.
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: Workflow run status or conclusion.
+          schema:
+            type: string
+        - name: created
+          in: query
+          required: false
+          description: Date range query for workflow run creation time.
+          schema:
+            type: string
+        - name: head_sha
+          in: query
+          required: false
+          description: Commit SHA for workflow run head.
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Workflow runs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunsResponse"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Repository not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/jobs:
+    get:
+      operationId: actions_list_jobs_for_workflow_run
+      summary: List jobs for workflow run
+      description: Lists jobs for a workflow run.
+      tags:
+        - actions
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: run_id
+          in: path
+          required: true
+          description: Workflow run ID.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: filter
+          in: query
+          required: false
+          description: Whether to list only the latest attempt or all attempts.
+          schema:
+            type: string
+            enum:
+              - latest
+              - all
+            default: latest
+        - name: per_page
+          in: query
+          required: false
+          description: Number of results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          required: false
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "200":
+          description: Workflow run jobs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowJobsResponse"
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Workflow run not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+  /repos/{owner}/{repo}/actions/jobs/{job_id}/logs:
+    get:
+      operationId: actions_download_job_logs_for_workflow_run
+      summary: Download job logs for workflow run job
+      description: >
+        Gets a temporary redirect URL for downloading plain text job logs.
+        Read the URL from the Location response header.
+      tags:
+        - actions
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          description: Repository owner or organization login.
+          schema:
+            type: string
+            minLength: 1
+        - name: repo
+          in: path
+          required: true
+          description: Repository name without owner.
+          schema:
+            type: string
+            minLength: 1
+        - name: job_id
+          in: path
+          required: true
+          description: Workflow job ID.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: Accept
+          in: header
+          required: false
+          description: GitHub REST API media type.
+          schema:
+            type: string
+            default: application/vnd.github+json
+        - name: X-GitHub-Api-Version
+          in: header
+          required: false
+          description: GitHub REST API version.
+          schema:
+            type: string
+            default: "2026-03-10"
+      responses:
+        "302":
+          description: Redirect URL for downloading job logs.
+          headers:
+            Location:
+              description: Temporary URL for the plain text log file.
+              schema:
+                type: string
+                format: uri
+        "403":
+          description: Forbidden or rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+        "404":
+          description: Job not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: GitHub fine-grained personal access token
+
+  schemas:
+    AnyObject:
+      type: object
+      description: Generic JSON object returned by GitHub.
+      properties:
+        message:
+          type: string
+          description: Optional message field.
+      additionalProperties: true
+
+    GitHubError:
+      type: object
+      description: GitHub error response.
+      properties:
+        message:
+          type: string
+        documentation_url:
+          type: string
+        status:
+          type: string
+      additionalProperties: true
+
+    GitHubValidationError:
+      type: object
+      description: GitHub validation error response.
+      properties:
+        message:
+          type: string
+        documentation_url:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnyObject"
+      additionalProperties: true
+
+    User:
+      type: object
+      description: GitHub user.
+      properties:
+        login:
+          type: string
+        id:
+          type: integer
+        node_id:
+          type: string
+        avatar_url:
+          type: string
+        html_url:
+          type: string
+        type:
+          type: string
+        name:
+          type:
+            - string
+            - "null"
+        email:
+          type:
+            - string
+            - "null"
+      additionalProperties: true
+
+    Repository:
+      type: object
+      description: GitHub repository.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        name:
+          type: string
+        full_name:
+          type: string
+        private:
+          type: boolean
+        owner:
+          $ref: "#/components/schemas/User"
+        html_url:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        fork:
+          type: boolean
+        default_branch:
+          type: string
+        archived:
+          type: boolean
+        disabled:
+          type: boolean
+        visibility:
+          type: string
+      additionalProperties: true
+
+    ContentFile:
+      type: object
+      description: Repository content item.
+      properties:
+        type:
+          type: string
+        encoding:
+          type:
+            - string
+            - "null"
+        size:
+          type: integer
+        name:
+          type: string
+        path:
+          type: string
+        content:
+          type:
+            - string
+            - "null"
+        sha:
+          type: string
+        url:
+          type: string
+        git_url:
+          type:
+            - string
+            - "null"
+        html_url:
+          type:
+            - string
+            - "null"
+        download_url:
+          type:
+            - string
+            - "null"
+      additionalProperties: true
+
+    FileCommitResponse:
+      type: object
+      description: Response returned after creating or updating file contents.
+      properties:
+        content:
+          $ref: "#/components/schemas/ContentFile"
+        commit:
+          $ref: "#/components/schemas/Commit"
+      additionalProperties: true
+
+    Commit:
+      type: object
+      description: GitHub commit.
+      properties:
+        sha:
+          type: string
+        node_id:
+          type: string
+        html_url:
+          type: string
+        commit:
+          $ref: "#/components/schemas/AnyObject"
+        author:
+          $ref: "#/components/schemas/AnyObject"
+        committer:
+          $ref: "#/components/schemas/AnyObject"
+        parents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnyObject"
+      additionalProperties: true
+
+    Branch:
+      type: object
+      description: Repository branch.
+      properties:
+        name:
+          type: string
+        commit:
+          $ref: "#/components/schemas/AnyObject"
+        protected:
+          type: boolean
+      additionalProperties: true
+
+    GitRef:
+      type: object
+      description: Git reference.
+      properties:
+        ref:
+          type: string
+        node_id:
+          type: string
+        url:
+          type: string
+        object:
+          $ref: "#/components/schemas/AnyObject"
+      additionalProperties: true
+
+    GitTree:
+      type: object
+      description: Git tree.
+      properties:
+        sha:
+          type: string
+        url:
+          type: string
+        truncated:
+          type: boolean
+        tree:
+          type: array
+          items:
+            $ref: "#/components/schemas/GitTreeItem"
+      additionalProperties: true
+
+    GitTreeItem:
+      type: object
+      description: Git tree item.
+      properties:
+        path:
+          type: string
+        mode:
+          type: string
+        type:
+          type: string
+        sha:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+      additionalProperties: true
+
+    CompareCommitsResponse:
+      type: object
+      description: Commit comparison response.
+      properties:
+        status:
+          type: string
+        ahead_by:
+          type: integer
+        behind_by:
+          type: integer
+        total_commits:
+          type: integer
+        commits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Commit"
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/PullRequestFile"
+      additionalProperties: true
+
+    CombinedStatus:
+      type: object
+      description: Combined commit status.
+      properties:
+        state:
+          type: string
+        sha:
+          type: string
+        total_count:
+          type: integer
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnyObject"
+      additionalProperties: true
+
+    Issue:
+      type: object
+      description: GitHub issue.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        body:
+          type:
+            - string
+            - "null"
+        state:
+          type: string
+        locked:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/User"
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnyObject"
+        html_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        closed_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        pull_request:
+          $ref: "#/components/schemas/AnyObject"
+      additionalProperties: true
+
+    IssueComment:
+      type: object
+      description: Issue comment.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        body:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        html_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+
+    PullRequest:
+      type: object
+      description: Pull request.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        number:
+          type: integer
+        state:
+          type: string
+        locked:
+          type: boolean
+        title:
+          type: string
+        body:
+          type:
+            - string
+            - "null"
+        user:
+          $ref: "#/components/schemas/User"
+        html_url:
+          type: string
+        diff_url:
+          type: string
+        patch_url:
+          type: string
+        issue_url:
+          type: string
+        head:
+          $ref: "#/components/schemas/AnyObject"
+        base:
+          $ref: "#/components/schemas/AnyObject"
+        draft:
+          type: boolean
+        merged:
+          type: boolean
+        mergeable:
+          type:
+            - boolean
+            - "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        closed_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        merged_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+      additionalProperties: true
+
+    PullRequestFile:
+      type: object
+      description: Pull request changed file.
+      properties:
+        sha:
+          type: string
+        filename:
+          type: string
+        status:
+          type: string
+        additions:
+          type: integer
+        deletions:
+          type: integer
+        changes:
+          type: integer
+        blob_url:
+          type: string
+        raw_url:
+          type: string
+        contents_url:
+          type: string
+        patch:
+          type: string
+      additionalProperties: true
+
+    PullRequestReview:
+      type: object
+      description: Pull request review.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        body:
+          type:
+            - string
+            - "null"
+        state:
+          type: string
+        html_url:
+          type: string
+        pull_request_url:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        commit_id:
+          type: string
+      additionalProperties: true
+
+    PullRequestReviewComment:
+      type: object
+      description: Pull request review comment.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        body:
+          type: string
+        path:
+          type: string
+        diff_hunk:
+          type: string
+        commit_id:
+          type: string
+        original_commit_id:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        html_url:
+          type: string
+        pull_request_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+
+    SearchRepositoriesResponse:
+      type: object
+      description: Repository search response.
+      properties:
+        total_count:
+          type: integer
+        incomplete_results:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Repository"
+      additionalProperties: true
+
+    SearchCodeResponse:
+      type: object
+      description: Code search response.
+      properties:
+        total_count:
+          type: integer
+        incomplete_results:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchCodeItem"
+      additionalProperties: true
+
+    SearchCodeItem:
+      type: object
+      description: Code search result item.
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        sha:
+          type: string
+        url:
+          type: string
+        git_url:
+          type: string
+        html_url:
+          type: string
+        repository:
+          $ref: "#/components/schemas/Repository"
+      additionalProperties: true
+
+    SearchIssuesResponse:
+      type: object
+      description: Issue and pull request search response.
+      properties:
+        total_count:
+          type: integer
+        incomplete_results:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+      additionalProperties: true
+
+    WorkflowsResponse:
+      type: object
+      description: Repository workflows response.
+      properties:
+        total_count:
+          type: integer
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workflow"
+      additionalProperties: true
+
+    Workflow:
+      type: object
+      description: GitHub Actions workflow.
+      properties:
+        id:
+          type: integer
+        node_id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        state:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        url:
+          type: string
+        html_url:
+          type: string
+        badge_url:
+          type: string
+      additionalProperties: true
+
+    WorkflowRunsResponse:
+      type: object
+      description: Workflow runs response.
+      properties:
+        total_count:
+          type: integer
+        workflow_runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowRun"
+      additionalProperties: true
+
+    WorkflowRun:
+      type: object
+      description: GitHub Actions workflow run.
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        node_id:
+          type: string
+        head_branch:
+          type: string
+        head_sha:
+          type: string
+        path:
+          type: string
+        display_title:
+          type: string
+        run_number:
+          type: integer
+        event:
+          type: string
+        status:
+          type:
+            - string
+            - "null"
+        conclusion:
+          type:
+            - string
+            - "null"
+        workflow_id:
+          type: integer
+        html_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+
+    WorkflowJobsResponse:
+      type: object
+      description: Workflow jobs response.
+      properties:
+        total_count:
+          type: integer
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowJob"
+      additionalProperties: true
+
+    WorkflowJob:
+      type: object
+      description: GitHub Actions workflow job.
+      properties:
+        id:
+          type: integer
+          format: int64
+        run_id:
+          type: integer
+          format: int64
+        workflow_name:
+          type:
+            - string
+            - "null"
+        head_branch:
+          type: string
+        run_url:
+          type: string
+        run_attempt:
+          type: integer
+        node_id:
+          type: string
+        head_sha:
+          type: string
+        url:
+          type: string
+        html_url:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+        conclusion:
+          type:
+            - string
+            - "null"
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        name:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnyObject"
+      additionalProperties: true
+
+    CreateIssueRequest:
+      type: object
+      description: Request to create an issue.
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+        body:
+          type: string
+        assignees:
+          type: array
+          items:
+            type: string
+        labels:
+          type: array
+          items:
+            type: string
+        milestone:
+          type: integer
+      additionalProperties: false
+
+    CreateCommentRequest:
+      type: object
+      description: Request to create a comment.
+      required:
+        - body
+      properties:
+        body:
+          type: string
+          minLength: 1
+      additionalProperties: false
+
+    CreatePullRequestRequest:
+      type: object
+      description: Request to create a pull request.
+      required:
+        - title
+        - head
+        - base
+      properties:
+        title:
+          type: string
+          minLength: 1
+        head:
+          type: string
+          minLength: 1
+          description: Branch containing changes. Use user:branch for cross-repository pull requests.
+        base:
+          type: string
+          minLength: 1
+          description: Target branch.
+        body:
+          type: string
+        draft:
+          type: boolean
+        maintainer_can_modify:
+          type: boolean
+      additionalProperties: false
+
+    CreateOrUpdateFileRequest:
+      type: object
+      description: Request to create or update file contents.
+      required:
+        - message
+        - content
+        - branch
+      properties:
+        message:
+          type: string
+          minLength: 1
+          description: Commit message.
+        content:
+          type: string
+          minLength: 1
+          description: Base64-encoded file content.
+        sha:
+          type: string
+          description: Required when updating an existing file.
+        branch:
+          type: string
+          minLength: 1
+          description: Explicit target branch. Required by this safe connector.
+        committer:
+          $ref: "#/components/schemas/CommitIdentity"
+        author:
+          $ref: "#/components/schemas/CommitIdentity"
+      additionalProperties: false
+
+    CommitIdentity:
+      type: object
+      description: Commit author or committer identity.
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+      additionalProperties: false
+
+    CreateRefRequest:
+      type: object
+      description: Request to create a Git branch ref.
+      required:
+        - ref
+        - sha
+      properties:
+        ref:
+          type: string
+          description: Branch ref to create. Must start with refs/heads/.
+          pattern: "^refs/heads/[A-Za-z0-9._/-]+$"
+        sha:
+          type: string
+          minLength: 40
+          maxLength: 64
+          description: Commit SHA for the new branch ref.
+      additionalProperties: false
+
+    SubmitReviewRequest:
+      type: object
+      description: Request to submit a pull request review.
+      required:
+        - event
+      properties:
+        commit_id:
+          type: string
+        body:
+          type: string
+        event:
+          type: string
+          enum:
+            - APPROVE
+            - REQUEST_CHANGES
+            - COMMENT
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewCommentInput"
+      additionalProperties: false
+
+    ReviewCommentInput:
+      type: object
+      description: Inline pull request review comment input.
+      required:
+        - path
+        - body
+      properties:
+        path:
+          type: string
+        position:
+          type: integer
+        line:
+          type: integer
+        side:
+          type: string
+          enum:
+            - LEFT
+            - RIGHT
+        start_line:
+          type: integer
+        start_side:
+          type: string
+          enum:
+            - LEFT
+            - RIGHT
+        body:
+          type: string
+          minLength: 1
+      additionalProperties: false
+
+x-safety-notes:
+  - No delete file endpoint.
+  - No merge pull request endpoint.
+  - No force update ref endpoint.
+  - No repository settings, secrets, collaborators, permissions, or branch protection mutation endpoints.
+  - File writes require an explicit branch.
+  - Git ref creation is restricted by schema to refs/heads/* branch refs.
+  - All write operations are marked with x-openai-isConsequential.
