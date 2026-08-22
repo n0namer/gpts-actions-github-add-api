@@ -1121,25 +1121,7 @@ paths:
       x-openai-isConsequential: true
 
   /repos/{owner}/{repo}/issues/{issue_number}:
-    patch:
-      operationId: issue_update
-      summary: Update an issue
-      description: Updates issue title, body, state, labels, assignees, or milestone.
-      tags: [issues]
-      parameters:
-        - { name: owner, in: path, required: true, schema: { type: string } }
-        - { name: repo, in: path, required: true, schema: { type: string } }
-        - { name: issue_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200": { description: Issue updated. }
-      x-openai-isConsequential: true
+
     get:
       operationId: issues_get
       summary: Get issue
