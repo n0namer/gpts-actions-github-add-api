@@ -369,6 +369,31 @@
       }
     },
     "schemas": {
+      "GitHubRestRequest": {
+        "type": "object",
+        "required": ["method", "path"],
+        "properties": {
+          "method": { "type": "string", "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] },
+          "path": { "type": "string", "description": "Absolute GitHub API path such as /repos/owner/repo/releases. Full URLs are rejected." },
+          "query": { "type": "object", "additionalProperties": true },
+          "body": { "type": ["object", "array", "string", "number", "boolean", "null"] },
+          "confirm_mutation": { "type": "boolean", "default": false },
+          "confirm_admin_mutation": { "type": "boolean", "default": false },
+          "confirm_destructive_mutation": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": false
+      },
+      "GitHubGraphqlRequest": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string", "maxLength": 100000 },
+          "variables": { "type": "object", "additionalProperties": true },
+          "confirm_mutation": { "type": "boolean", "default": false },
+          "confirm_admin_mutation": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": false
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
