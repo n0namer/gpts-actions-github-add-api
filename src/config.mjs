@@ -28,8 +28,8 @@ export function loadConfig(env = process.env) {
     githubLogRedirectHostSuffixes: csv(env.GITHUB_LOG_REDIRECT_HOST_SUFFIXES, "githubusercontent.com,actions.githubusercontent.com,blob.core.windows.net"),
     actionBearerToken: env.ACTION_BEARER_TOKEN || "",
     actionRequireBearer: String(env.ACTION_REQUIRE_BEARER ?? "true").toLowerCase() !== "false",
-    githubRepositoryScopeMode: String(env.GITHUB_REPOSITORY_SCOPE_MODE || "allowlist").trim().toLowerCase(),
-    // In allowlist mode an empty list is fail-closed. Set GITHUB_REPOSITORY_SCOPE_MODE=token explicitly to use the server token's full repository scope.
+    githubRepositoryScopeMode: String(env.GITHUB_REPOSITORY_SCOPE_MODE || "token").trim().toLowerCase(),
+    // Token mode is the default: every repository accessible to the configured GitHub credential is in scope. Set allowlist explicitly only for restricted deployments.
     allowedRepos: csv(env.GITHUB_ALLOWED_REPOS),
     allowedBranches: csv(env.GITHUB_ALLOWED_BRANCHES),
     allowedPathPrefixes: csv(env.GITHUB_ALLOWED_PATH_PREFIXES),
