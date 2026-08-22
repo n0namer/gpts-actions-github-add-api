@@ -25,6 +25,427 @@ tags:
   - name: actions
 
 paths:
+  /repos/{owner}/{repo}/git/ref/{ref}:
+    get:
+      operationId: ref_get
+      summary: Get a Git ref
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Git ref. }
+
+  /repos/{owner}/{repo}/git/commits/{commit_sha}:
+    get:
+      operationId: commit_get
+      summary: Get a Git commit
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: commit_sha, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Git commit. }
+
+  /repos/{owner}/{repo}/git/trees/{tree_sha}:
+    get:
+      operationId: tree_get
+      summary: Get a Git tree
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: tree_sha, in: path, required: true, schema: { type: string } }
+        - { name: recursive, in: query, required: false, schema: { type: string, enum: ["1"] } }
+      responses:
+        "200": { description: Git tree. }
+
+  /repos/{owner}/{repo}/git/blobs/{file_sha}:
+    get:
+      operationId: blob_get
+      summary: Get a Git blob
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: file_sha, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Git blob. }
+
+  /repos/{owner}/{repo}/git/tags/{tag_sha}:
+    get:
+      operationId: tag_get
+      summary: Get an annotated Git tag
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: tag_sha, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Annotated tag. }
+
+  /repos/{owner}/{repo}/git/tags:
+    post:
+      operationId: tag_create
+      summary: Create an annotated Git tag
+      tags: [git]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag, message, object, type]
+              additionalProperties: false
+              properties:
+                tag: { type: string }
+                message: { type: string }
+                object: { type: string }
+                type: { type: string, enum: [commit, tree, blob] }
+                tagger: { type: object, additionalProperties: true }
+      responses:
+        "201": { description: Annotated tag created. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/compare/{basehead}:
+    get:
+      operationId: commits_compare
+      summary: Compare two commits
+      description: Compares commits, branches, or tags using BASE...HEAD syntax.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: basehead, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Commit comparison. }
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/commits:
+    get:
+      operationId: pull_commits_list
+      summary: List pull request commits
+      tags: [pulls]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Pull request commits. }
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/files:
+    get:
+      operationId: pull_files_list
+      summary: List pull request files
+      tags: [pulls]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Pull request files. }
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/reviews:
+    get:
+      operationId: reviews_list
+      summary: List pull request reviews
+      tags: [pulls]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Pull request reviews. }
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/comments:
+    get:
+      operationId: review_comments_list
+      summary: List pull request review comments
+      tags: [pulls]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Review comments. }
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/update-branch:
+    put:
+      operationId: pull_update_branch
+      summary: Update a pull request branch
+      description: Updates the pull request head branch with changes from its base branch. An expected head SHA may be supplied.
+      tags: [pulls]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: pull_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                expected_head_sha: { type: string }
+      responses:
+        "202": { description: Branch update scheduled. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/commits/{ref}/check-runs:
+    get:
+      operationId: check_runs_list
+      summary: List check runs for a ref
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+        - { name: check_name, in: query, required: false, schema: { type: string } }
+        - { name: status, in: query, required: false, schema: { type: string } }
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [latest, all] } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Check runs. }
+
+  /repos/{owner}/{repo}/check-runs/{check_run_id}:
+    get:
+      operationId: check_run_get
+      summary: Get a check run
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: check_run_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Check run. }
+
+  /repos/{owner}/{repo}/commits/{ref}/status:
+    get:
+      operationId: combined_status_get
+      summary: Get combined commit status
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Combined commit status. }
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}:
+    get:
+      operationId: workflow_run_get
+      summary: Get a workflow run
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Workflow run. }
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/jobs:
+    get:
+      operationId: workflow_jobs_list
+      summary: List jobs for a workflow run
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [latest, all] } }
+        - { name: per_page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Workflow jobs. }
+
+  /repos/{owner}/{repo}/actions/jobs/{job_id}:
+    get:
+      operationId: job_get
+      summary: Get a workflow job
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: job_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Workflow job. }
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/logs:
+    get:
+      operationId: workflow_logs_download
+      summary: Download workflow run logs
+      description: Returns a redirect to the workflow run log archive when available.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "302": { description: Redirect to log archive. }
+
+  /repos/{owner}/{repo}/actions/jobs/{job_id}/logs:
+    get:
+      operationId: job_logs_download
+      summary: Download job logs
+      description: Returns a redirect to the plain text job log when available.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: job_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "302": { description: Redirect to job log. }
+
+  /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}:
+    get:
+      operationId: artifact_download
+      summary: Download an Actions artifact
+      description: Returns a redirect to an artifact archive. The archive format is zip.
+      tags: [actions]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: artifact_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: archive_format, in: path, required: true, schema: { type: string, enum: [zip] } }
+      responses:
+        "302": { description: Redirect to artifact archive. }
+
+  /repos/{owner}/{repo}/releases/{release_id}:
+    get:
+      operationId: release_get
+      summary: Get a release
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: release_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Release. }
+
+  /repos/{owner}/{repo}/releases/tags/{tag}:
+    get:
+      operationId: release_by_tag_get
+      summary: Get a release by tag
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: tag, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Release. }
+
+  /repos/{owner}/{repo}/releases/generate-notes:
+    post:
+      operationId: release_notes_generate
+      summary: Generate release notes
+      description: Generates release notes for a tag without creating a release.
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag_name]
+              additionalProperties: false
+              properties:
+                tag_name: { type: string }
+                target_commitish: { type: string }
+                previous_tag_name: { type: string }
+                configuration_file_path: { type: string }
+      responses:
+        "200": { description: Generated release notes. }
+      x-openai-isConsequential: true
+
+  /repos/{owner}/{repo}/rulesets/{ruleset_id}:
+    get:
+      operationId: ruleset_get
+      summary: Get a repository ruleset
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: ruleset_id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Repository ruleset. }
+
+  /repos/{owner}/{repo}/branches/{branch}:
+    get:
+      operationId: branch_get
+      summary: Get a branch
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: branch, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Branch details. }
+
+  /repos/{owner}/{repo}/collaborators/{username}/permission:
+    get:
+      operationId: repo_permission_get
+      summary: Get a user's repository permission
+      tags: [repos]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: username, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Repository permission. }
+
+  /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}:
+    get:
+      operationId: code_scanning_alert_get
+      summary: Get a code scanning alert
+      tags: [security]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: alert_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Code scanning alert. }
+
+  /repos/{owner}/{repo}/dependabot/alerts/{alert_number}:
+    get:
+      operationId: dependabot_alert_get
+      summary: Get a Dependabot alert
+      tags: [security]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: alert_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Dependabot alert. }
+
+  /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}:
+    get:
+      operationId: secret_scanning_alert_get
+      summary: Get a secret scanning alert
+      tags: [security]
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: alert_number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Secret scanning alert. }
+
   /repos/{owner}/{repo}/dispatches:
     post:
       operationId: repository_dispatch
