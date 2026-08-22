@@ -210,6 +210,44 @@
         }
       }
     },
+    "/github/rest": {
+      "post": {
+        "operationId": "githubRest",
+        "summary": "Call an arbitrary GitHub REST API path",
+        "description": "Calls a canonical api.github.com path with the configured GitHub credential. No repository allowlist is applied. Reads need no mutation flag; writes require confirmation flags based on risk.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubRestRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "GitHub REST response" },
+          "400": { "description": "Invalid method or path" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Confirmation required or GitHub denied the operation" }
+        },
+        "x-openai-isConsequential": true
+      }
+    },
+    "/github/graphql": {
+      "post": {
+        "operationId": "githubGraphql",
+        "summary": "Execute a GitHub GraphQL operation",
+        "description": "Executes GitHub GraphQL with the configured credential. Queries run directly. Mutations require explicit mutation and admin confirmation flags.",
+        "security": [{ "ActionBearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GitHubGraphqlRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "GitHub GraphQL response" },
+          "400": { "description": "Invalid GraphQL request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Mutation confirmation required or GitHub denied the operation" }
+        },
+        "x-openai-isConsequential": true
+      }
+    },
     "/pull-request/read": {
       "post": {
         "operationId": "githubReadPullRequest",
