@@ -1202,7 +1202,7 @@ paths:
         - name: X-GitHub-Api-Version
           in: header
           required: false
-          schema: { type: string, default: "2026-03-10" }
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -1262,7 +1262,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Authenticated user profile.
@@ -1360,7 +1360,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of repositories.
@@ -1424,7 +1424,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Repository metadata.
@@ -1510,7 +1510,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Repository search results.
@@ -1587,7 +1587,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Code search results.
@@ -1686,7 +1686,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Issue and pull request search results.
@@ -1751,7 +1751,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: File or directory contents.
@@ -1819,7 +1819,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
@@ -1894,7 +1894,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
@@ -1973,7 +1973,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Git tree.
@@ -2072,7 +2072,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of commits.
@@ -2137,7 +2137,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Commit details.
@@ -2200,7 +2200,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Commit comparison.
@@ -2273,7 +2273,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of branches.
@@ -2332,7 +2332,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Combined commit status.
@@ -2442,7 +2442,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of issues.
@@ -2499,7 +2499,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
@@ -2594,7 +2594,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Issue details.
@@ -2668,7 +2668,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of issue comments.
@@ -2726,7 +2726,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
@@ -2855,7 +2855,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of pull requests.
@@ -2906,7 +2906,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
@@ -3007,7 +3007,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Pull request details.
@@ -3081,7 +3081,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of changed files.
@@ -3152,7 +3152,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       requestBody:
         required: true
         content:
@@ -3245,7 +3245,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: List of review comments.
@@ -3314,7 +3314,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Repository workflows.
@@ -3417,7 +3417,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Workflow runs.
@@ -3508,7 +3508,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "200":
           description: Workflow run jobs.
@@ -3574,7 +3574,7 @@ paths:
           description: GitHub REST API version.
           schema:
             type: string
-            default: "2026-03-10"
+
       responses:
         "302":
           description: Redirect URL for downloading job logs.
