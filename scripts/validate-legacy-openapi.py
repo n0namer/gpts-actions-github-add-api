@@ -64,7 +64,8 @@ for url,item in paths.items():
         oid=op.get('operationId')
         if oid: ops.append((oid,url,method))
         vars=set(re.findall(r'{([^}]+)}',url))
-        params={q.get('name'):q for q in op.get('parameters',[]) if isinstance(q,dict) and q.get('in')=='path'}
+        all_params=list(item.get('parameters',[]))+list(op.get('parameters',[]))
+        params={q.get('name'):q for q in all_params if isinstance(q,dict) and q.get('in')=='path'}
         for var in vars:
             q=params.get(var)
             if q is None: issues.append(('MISSING_PATH_PARAMETER',f'$.paths.{url}.{method}',var))
