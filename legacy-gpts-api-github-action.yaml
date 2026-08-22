@@ -286,7 +286,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/GitHubValidationError"
 
-  /search/issues:
+
 
   /repos/{owner}/{repo}/contents/{path}:
     get:
