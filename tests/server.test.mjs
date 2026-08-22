@@ -426,6 +426,51 @@ test("/file/create without Bearer returns 401", async () => {
   } finally { server.close(); }
 });
 
+test("repository creation requires explicit mutation confirmation before GitHub access", async () => {
+  await assert.rejects(
+    () => createGitHubRepository({ name: "example-repository" }, { githubTokenCandidates: [] }),
+    (error) => error instanceof GitHubAddError && error.payload.status === "MUTATION_CONFIRMATION_REQUIRED",
+  );
+});
+
+test("/github/repositories/create is wired to the dedicated repository creation dependency", async () => {
+  const handler = createRequestHandler({
+    config: {
+      actionBearerToken: "correct-token",
+      actionRequireBearer: true,
+      githubRepositoryScopeMode: "token",
+      allowedRepos: [],
+      allowedBranches: [],
+      allowedPathPrefixes: [],
+      protectedPathPrefixes: [],
+      blockProtectedPaths: false,
+      maxFileBytes: 200000,
+      maxChangedLines: 300,
+      requirePreview: true,
+    },
+    createRepository: async (payload) => {
+      assert.equal(payload.name, "example-repository");
+      assert.equal(payload.confirm_mutation, true);
+      return { status: "GITHUB_REPOSITORY_CREATE_PASS", full_name: "example/example-repository", created: true, reread_verified: true };
+    },
+  });
+  const server = createServer(handler);
+  server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/github/repositories/create`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer correct-token" },
+      body: JSON.stringify({ name: "example-repository", confirm_mutation: true }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, "GITHUB_REPOSITORY_CREATE_PASS");
+    assert.equal(body.created, true);
+    assert.equal(body.reread_verified, true);
+  } finally { server.close(); }
+});
+
 /* ──── Preview/apply with replace_exact_once ──── */
 
 test("preview and apply with replace_exact_once", async () => {
