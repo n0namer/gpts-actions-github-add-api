@@ -258,6 +258,8 @@ export function createRequestHandler(options = {}) {
         return send(res, 200, result);
       }
       if (req.method === "POST" && url.pathname === "/file/create") { requireBearer(req, config); return send(res, 200, await handleCreate(await readBody(req), config, deps)); }
+      if (req.method === "POST" && url.pathname === "/github/rest") { requireBearer(req, config); return send(res, 200, await deps.githubRest(await readBody(req), config)); }
+      if (req.method === "POST" && url.pathname === "/github/graphql") { requireBearer(req, config); return send(res, 200, await deps.githubGraphql(await readBody(req), config)); }
       if (req.method === "POST" && url.pathname === "/pull-request/read") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req)); return send(res, 200, await deps.readPullRequest(payload, config)); }
       if (req.method === "POST" && url.pathname === "/pull-request/ready") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true }); return send(res, 200, await deps.markPullRequestReady(payload, config)); }
       if (req.method === "POST" && url.pathname === "/pull-request/merge") { requireBearer(req, config); const payload = validatePullRequestPayload(await readBody(req), { requireExpectedHead: true }); return send(res, 200, await deps.mergePullRequest(payload, config)); }
