@@ -543,6 +543,45 @@ test("runtime OpenAPI is exactly the static GPT Actions schema", async () => {
   } finally { server.close(); }
 });
 
+test("OpenAPI exposes generic REST and GraphQL without repository allowlist", async () => {
+  const doc = JSON.parse(await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8"));
+  assert.equal(doc.paths["/github/rest"].post.operationId, "githubRest");
+  assert.equal(doc.paths["/github/graphql"].post.operationId, "githubGraphql");
+  assert.equal(JSON.stringify(doc).includes("repository_allowlist"), false);
+  assert.equal(JSON.stringify(doc).includes("repository_not_allowed"), false);
+});
+
+test("all OpenAPI descriptions are at most 300 characters", async () => {
+  const doc = JSON.parse(await readFile(new URL("../gpts-action-openapi.json", import.meta.url), "utf8"));
+  const violations = [];
+  const visit = (value, path = "$") => {
+    if (!value || typeof value !== "object") return;
+    if (typeof value.description === "string" && value.description.length > 300) violations.push({ path, length: value.description.length });
+    for (const [key, child] of Object.entries(value)) visit(child, `${path}.${key}`);
+  };
+  visit(doc);
+  assert.deepEqual(violations, []);
+});
+
+test("generic GitHub routes dispatch payloads without repository allowlist", async () => {
+  const calls = [];
+  const handler = createRequestHandler({
+    config: { actionBearerToken: "x", actionRequireBearer: false, protectedPathPrefixes: [], blockProtectedPaths: true, maxFileBytes: 200000, maxChangedLines: 300, requirePreview: false },
+    githubRest: async (p) => { calls.push(["rest", p]); return { status: "GITHUB_REST_PASS", github_status: 200, data: { ok: true } }; },
+    githubGraphql: async (p) => { calls.push(["graphql", p]); return { status: "GITHUB_GRAPHQL_PASS", operation_type: "query", data: { viewer: { login: "x" } } }; },
+  });
+  const server = createServer(handler); server.listen(0); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const rest = await fetch(`${base}/github/rest`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ method: "GET", path: "/repos/any-owner/any-repo" }) });
+    assert.equal(rest.status, 200);
+    const graphql = await fetch(`${base}/github/graphql`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: "query { viewer { login } }" }) });
+    assert.equal(graphql.status, 200);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0][1].path, "/repos/any-owner/any-repo");
+  } finally { server.close(); }
+});
+
 test("PR routes enforce expected head guards across repositories", async () => {
   let readCalls = 0, readyCalls = 0, mergeCalls = 0;
   const handler = createRequestHandler({
