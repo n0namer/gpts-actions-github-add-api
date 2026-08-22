@@ -38,18 +38,12 @@ The `GET /health` and `GET /openapi.json` endpoints are public (no auth required
 
 ### Token management
 
-- The token is set via the Railway environment variable `ACTION_BEARER_TOKEN`.
-- When `ACTION_REQUIRE_BEARER=true` (default), all patch endpoints reject unauthenticated requests.
+- The token is stored in the Coolify application environment as `ACTION_BEARER_TOKEN`.
+- When `ACTION_REQUIRE_BEARER=true` (default), protected Action endpoints reject unauthenticated requests.
 - If `ACTION_REQUIRE_BEARER=true` but `ACTION_BEARER_TOKEN` is empty, the server responds `503 AUTH_NOT_CONFIGURED`.
-- Use a strong random token (e.g., 64 hex chars = 32 bytes). Generate locally with:
+- Generate a strong random token locally and store it directly in Coolify; never commit or copy the value into documentation.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Then set it on Railway via `railway variables set ACTION_BEARER_TOKEN=<token>` or the Railway dashboard.
-
-GitHub authentication is handled separately by the Railway service through `GITHUB_TOKEN`, which must remain a Railway secret.
+GitHub authentication is handled separately by the service through server-side GitHub credential environment variables. Those credentials remain secrets and are never returned by the API.
 
 ## Expected operations
 
