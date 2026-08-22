@@ -49,9 +49,18 @@ GitHub authentication is handled separately by the service through server-side G
 
 | operationId | Endpoint | Purpose |
 |---|---|---|
-| `githubAddHealth` | `GET /health` | Check service health |
-| `githubPatchPreview` | `POST /patch/preview` | Preview marker-bounded patch without committing |
-| `githubPatchApply` | `POST /patch/apply` | Apply previously previewed marker-bounded patch |
+| `addHealth` | `GET /health` | Check runtime identity, policy and capabilities |
+| `githubRest` | `POST /github/rest` | Universal bounded GitHub REST gateway |
+| `githubGraphql` | `POST /github/graphql` | GitHub GraphQL queries and gated mutations |
+| `searchGitHubRepositories` | `POST /github/search/repositories` | Search repositories in the configured credential scope |
+| `searchGitHubCode` | `POST /github/search/code` | Search code in an accessible repository |
+| `createGitHubRepository` | `POST /github/repositories/create` | Create and reread-verify a user or organization repository |
+| `diagnoseGitHubRepository` | `POST /github/repository/diagnose` | Repository/ruleset/Actions/check diagnostics |
+| `githubRefWriteProbe` | `POST /github/ref-write-probe` | Self-cleaning repository write probe |
+| `downloadGitHubJobLogs` | `POST /github/actions/job-logs` | Bounded Actions job-log retrieval |
+| `readFile` / `createFile` | `/file/read`, `/file/create` | Specialized file operations |
+| `patchPreview` / `patchApply` | `/patch/preview`, `/patch/apply` | SHA-guarded stale-safe patch workflow |
+| `readPullRequest` / `markPullRequestReady` / `mergePullRequest` | `/pull-request/*` | Guarded pull-request operations |
 
 ## Safe fixture smoke
 
