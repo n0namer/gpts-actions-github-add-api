@@ -31,7 +31,7 @@ All `POST /patch/preview` and `POST /patch/apply` requests require an `Authoriza
 
 1. In the GPT Builder **Actions** section, after importing the OpenAPI schema, click on the **Authentication** dropdown.
 2. Select **API Key** → **Bearer**.
-3. The token is the `ACTION_BEARER_TOKEN` — **not** a GitHub PAT. This token is set as a Railway secret.
+3. The token is the `ACTION_BEARER_TOKEN` — **not** a GitHub PAT. This token is stored only in the Coolify application environment.
 4. OpenAI will pass the token as `Authorization: Bearer {{key}}` on every protected endpoint request.
 
 The `GET /health` and `GET /openapi.json` endpoints are public (no auth required).
