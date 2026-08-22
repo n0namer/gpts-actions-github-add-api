@@ -195,7 +195,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/GitHubError"
 
-  /search/repositories:
+
 
   /search/code:
     get:
