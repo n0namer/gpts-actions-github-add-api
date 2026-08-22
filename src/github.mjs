@@ -919,18 +919,18 @@ export async function githubGraphqlRequest(payload, config) {
     throw new GitHubAddError(409, { status: "ADMIN_MUTATION_CONFIRMATION_REQUIRED", mutation_class: "admin", message: "confirm_admin_mutation=true is required for GraphQL mutations" });
   }
   const repositoryScope = payload.repository_full_name ? String(payload.repository_full_name).trim() : null;
-  const scopeMode = String(config.githubRepositoryScopeMode || "allowlist").toLowerCase();
-  if (config.allowedRepos.length === 0 && scopeMode !== "token") {
-    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "Configure GITHUB_ALLOWED_REPOS or explicitly set GITHUB_REPOSITORY_SCOPE_MODE=token" });
+  const scopeMode = String(config.githubRepositoryScopeMode || "token").toLowerCase();
+  if (scopeMode !== "token" && config.allowedRepos.length === 0) {
+    throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "Configure GITHUB_ALLOWED_REPOS for allowlist mode, or use GITHUB_REPOSITORY_SCOPE_MODE=token" });
   }
-  if (config.allowedRepos.length > 0 && !repositoryScope) {
+  if (scopeMode !== "token" && config.allowedRepos.length > 0 && !repositoryScope) {
     throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_REQUIRED", message: "repository_full_name is required for GraphQL when a repository allowlist is configured" });
   }
   if (repositoryScope) {
     parseRepository(repositoryScope);
     validateRepositoryScope(repositoryScope, config);
   }
-  if (config.allowedRepos.length > 0 && authMode === "user") {
+  if (scopeMode !== "token" && config.allowedRepos.length > 0 && authMode === "user") {
     throw new GitHubAddError(403, { status: "GRAPHQL_USER_AUTH_SCOPE_UNSAFE", message: "Use installation auth for GraphQL when a repository allowlist is configured" });
   }
 
