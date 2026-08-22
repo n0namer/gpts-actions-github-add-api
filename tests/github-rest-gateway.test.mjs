@@ -245,7 +245,7 @@ test("Action-friendly JSON aliases normalize REST query/body and GraphQL variabl
 });
 
 test("REST infers repository scope from /repos path and enforces allowlist", async () => {
-  const config = { ...baseConfig, allowedRepos: ["n0namer/allowed"] };
+  const config = { ...baseConfig, githubRepositoryScopeMode: "allowlist", allowedRepos: ["n0namer/allowed"] };
   await assert.rejects(
     githubRestRequest({ method: "GET", path: "/repos/n0namer/forbidden" }, config),
     (error) => error?.payload?.status === "NOT_ALLOWED" && error?.payload?.repository_full_name === "n0namer/forbidden",
