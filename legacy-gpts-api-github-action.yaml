@@ -1202,7 +1202,7 @@ paths:
         - name: X-GitHub-Api-Version
           in: header
           required: false
-          schema: { type: string, default: "2026-03-10" }
+          schema: { type: string }
       requestBody:
         required: true
         content:
