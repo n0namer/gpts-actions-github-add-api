@@ -42,7 +42,10 @@ def walk(x,p='$'):
         if 'default' in x:
             d=x['default']
             ok=True
-            if t=='string': ok=isinstance(d,str)
+            if t=='string':
+                ok=isinstance(d,str)
+                if ok and re.fullmatch(r'\d{4}-\d{2}-\d{2}',d):
+                    issues.append(('DATE_LIKE_STRING_DEFAULT',p+'.default',d))
             elif t=='integer': ok=isinstance(d,int) and not isinstance(d,bool)
             elif t=='number': ok=isinstance(d,(int,float)) and not isinstance(d,bool)
             elif t=='boolean': ok=isinstance(d,bool)
