@@ -833,7 +833,8 @@ export async function searchGitHubRepositoryCode(payload, config) {
   parseRepository(repositoryFullName);
   validateRepositoryScope(repositoryFullName, config);
   const query = normalizeScopedSearchText(payload.query);
-  rejectSearchScopeSyntax(query);
+  const scopeMode = String(config.githubRepositoryScopeMode || "token").toLowerCase();
+  if (scopeMode !== "token") rejectSearchScopeSyntax(query);
   const perPage = Number(payload.per_page ?? 20);
   const page = Number(payload.page ?? 1);
   if (!Number.isInteger(perPage) || perPage < 1 || perPage > 100) throw new GitHubAddError(400, { status: "BAD_REQUEST", message: "per_page must be an integer from 1 to 100" });
