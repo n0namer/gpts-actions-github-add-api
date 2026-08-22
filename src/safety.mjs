@@ -2,14 +2,15 @@ import { GitHubAddError } from "./errors.mjs";
 
 export function validateRepositoryScope(repositoryFullName, config) {
   const repository = String(repositoryFullName || "").trim();
+  const scopeMode = String(config.githubRepositoryScopeMode || "token").toLowerCase();
+  if (scopeMode === "token") return true;
   if (config.allowedRepos.length > 0) {
     if (!config.allowedRepos.some((item) => item.toLowerCase() === repository.toLowerCase())) {
       throw new GitHubAddError(403, { status: "NOT_ALLOWED", reason: "repository_not_allowed", repository_full_name: repository });
     }
     return true;
   }
-  if (String(config.githubRepositoryScopeMode || "allowlist").toLowerCase() === "token") return true;
-  throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "Configure GITHUB_ALLOWED_REPOS or explicitly set GITHUB_REPOSITORY_SCOPE_MODE=token" });
+  throw new GitHubAddError(403, { status: "REPOSITORY_SCOPE_NOT_CONFIGURED", message: "Configure GITHUB_ALLOWED_REPOS for allowlist mode, or use GITHUB_REPOSITORY_SCOPE_MODE=token" });
 }
 
 export function validateAccess(payload, config) {
